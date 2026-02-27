@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0a0a0a"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <title>BODRUM</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Socket.io -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <!-- MENYU TAB -->
+  <section id="menu" class="tab-content active">
+    <div class="header">
+      <div class="brand">BODRUM</div>
+      <div class="search-container">
+        <div class="search-box">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" class="search-input" id="searchInput" placeholder="Menyudan qidirish...">
+        </div>
+      </div>
+    </div>
+
+    <div class="categories" id="categories"></div>
+    <main id="menuContent"></main>
+  </section>
+
+  <!-- SAVAT TAB -->
+  <section id="cart" class="tab-content">
+    <div class="header">
+      <div class="brand">BODRUM</div>
+    </div>
+    <main>
+      <div id="cartList" class="cart-list"></div>
+      <div id="cartTotal">Umumiy: 0 so'm</div>
+      <button id="orderBtn">Buyurtma berish</button>
+    </main>
+  </section>
+
+  <!-- PROFIL TAB -->
+  <section id="profile" class="tab-content">
+    <div class="profile-container">
+      <div class="profile-header-card">
+        <div class="profile-avatar-section">
+          <div class="profile-avatar" id="profileAvatar">👤</div>
+          <div class="profile-name" id="profileName">Mehmon</div>
+          <div class="profile-phone" id="profilePhone">+998 __ _______</div>
+        </div>
+        
+        <div class="profile-stats">
+          <div class="stat-box">
+            <div class="stat-box-icon">📦</div>
+            <span class="stat-box-value" id="totalOrders">0</span>
+            <span class="stat-box-label">Buyurtma</span>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-icon">💰</div>
+            <span class="stat-box-value" id="totalSpent">0</span>
+            <span class="stat-box-label">So'm</span>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-icon">⭐</div>
+            <span class="stat-box-value" id="vipStatus">🥉</span>
+            <span class="stat-box-label">Status</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <div class="info-card-header">
+          <div class="info-card-icon">✏️</div>
+          <div>
+            <div class="info-card-title">Ma'lumotlarni tahrirlash</div>
+            <div class="info-card-subtitle">Buyurtma uchun kerak</div>
+          </div>
+        </div>
+        
+        <div class="profile-input-group">
+          <span class="profile-input-icon">👤</span>
+          <input type="text" id="editName" placeholder="Ismingiz" maxlength="30">
+        </div>
+        
+        <div class="profile-input-group">
+          <span class="profile-input-icon">📱</span>
+          <input type="tel" id="editPhone" placeholder="90 123 45 67" maxlength="9">
+        </div>
+        
+        <button class="save-profile-btn" id="saveProfileBtn">
+          <span>💾</span>
+          <span>Saqlash</span>
+        </button>
+      </div>
+
+      <div class="orders-section">
+        <div class="orders-header">
+          <div class="orders-title">📋 Buyurtmalar tarixi</div>
+          <span class="orders-count" id="ordersCountBadge">0</span>
+        </div>
+        <div id="ordersList"></div>
+      </div>
+
+      <button class="logout-btn" id="logoutBtn">
+        <span>🚪</span>
+        <span>Akkauntdan chiqish</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- FIRST TIME PROFILE MODAL -->
+  <div id="firstTimeModal" class="profile-modal-overlay">
+    <div class="profile-modal-box">
+      <div class="profile-modal-icon">👋</div>
+      <div class="profile-modal-title">Xush kelibsiz!</div>
+      <div class="profile-modal-text">
+        Buyurtma berish uchun iltimos, ma'lumotlaringizni to'ldiring
+      </div>
+      <div class="profile-modal-inputs">
+        <div class="profile-input-group">
+          <span class="profile-input-icon">👤</span>
+          <input type="text" id="modalName" placeholder="Ismingiz" maxlength="30">
+        </div>
+        <div class="profile-input-group">
+          <span class="profile-input-icon">📱</span>
+          <input type="tel" id="modalPhone" placeholder="90 123 45 67" maxlength="9">
+        </div>
+      </div>
+      <button class="profile-modal-btn" id="modalSaveBtn">Davom etish</button>
+    </div>
+  </div>
+
+  <!-- FOOD DETAIL MODAL -->
+  <div id="foodDetailModal" class="modal-overlay">
+    <div class="food-detail-modal">
+      <button class="close-food-modal" onclick="closeFoodModal()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      
+      <div class="food-detail-image-wrapper">
+        <img id="foodModalImage" src="" alt="" loading="lazy">
+      </div>
+      
+      <div class="food-detail-content">
+        <h2 id="foodModalName" class="food-detail-title"></h2>
+        <div id="foodModalPrice" class="food-detail-price"></div>
+        <div class="food-detail-desc-box">
+          <p id="foodModalDescription"></p>
+        </div>
+      </div>
+      
+      <div class="food-detail-footer">
+        <button id="foodModalAddBtn" class="food-detail-add-btn">
+          Savatchaga qo'shish
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAYME INSTRUCTION MODAL (YANGI) -->
+  <div id="paymeInstructionModal" class="modal-overlay">
+    <div class="modal-box instruction-modal">
+      <div class="modal-title">💳 Payme orqali to'lov</div>
+      
+      <div class="instruction-content">
+        <div class="instruction-step">
+          <div class="step-number">1</div>
+          <div class="step-text">
+            <strong>Payme orqali to'lov qiling</strong>
+            <p>To'lov tugmasini bosib, Payme ilovasida to'lovni amalga oshiring</p>
+          </div>
+        </div>
+        
+        <div class="instruction-step">
+          <div class="step-number">2</div>
+          <div class="step-text">
+            <strong>Skrinshot oling</strong>
+            <p>To'lov muvaffaqiyatli bo'lgandan so'ng, ekran rasmini oling</p>
+          </div>
+        </div>
+        
+        <div class="instruction-step">
+          <div class="step-number">3</div>
+          <div class="step-text">
+            <strong>Skrinshotni yuboring</strong>
+            <p>Qaytib kelib, skrinshotni yuklang va buyurtma yuboring</p>
+          </div>
+        </div>
+        
+        <!-- NAMUNA SKRINSHOT -->
+        <div class="screenshot-example">
+          <div class="example-label">📸 Namuna skrinshot:</div>
+          <div class="example-image-wrapper">
+            <img src="https://i.ibb.co/placeholder/payme-screenshot-example.png" 
+                alt="Payme skrinshot namuna" 
+                id="exampleScreenshot">
+            <div class="example-overlay">
+              <span>Mana shunday skrinshot</span>
+            </div>
+          </div>
+          <div class="example-hint">
+            💡 Payme dan "To'lov muvaffaqiyatli" degan xabarni skrinshot qiling
+          </div>
+        </div>
+      </div>
+      
+      <button class="btn-understand" id="understandBtn">
+        <span>Tushundim, to'lovga o'tish</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </button>
+      
+      <button class="btn-cancel-instruction" onclick="closeInstructionModal()">
+        Bekor qilish
+      </button>
+    </div>
+  </div>
+
+  <!-- ESKI PAYMENT MODAL (endilikda 2-qadam) -->
+  <div id="paymentModal" class="modal-overlay">
+    <div class="modal-box payment-modal">
+      <div class="modal-title">💳 To'lov ma'lumotlari</div>
+      
+      <div class="payment-amount">
+        <span class="amount-label">To'lov summasi:</span>
+        <span id="paymentTotal" class="amount-value">0 so'm</span>
+      </div>
+
+      <div id="paymentForm">
+        <div class="payment-info">
+          📱 Telefon raqamingizni tasdiqlang
+        </div>
+        
+        <div class="input-group">
+          <input id="paymentPhone" type="tel" required maxlength="9" placeholder="901234567"/>
+          <label>Telefon raqam (+998)</label>
+        </div>
+
+        <button id="confirmPaymentBtn" class="prof-btn">
+          <span id="btnText">Davom etish</span>
+          <span id="btnLoader" class="loader" style="display:none;"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAVIGATION -->
+  <nav class="bottom-bar">
+    <button class="tab active" data-tab="menu">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M3 3h18v2H3V3zm0 4h18v2H3V7zm0 4h18v2H3v-2z"/>
+      </svg>
+      <span class="label">Menyu</span>
+    </button>
+    <button class="tab" data-tab="cart">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
+      </svg>
+      <span class="label">Savat</span>
+      <span id="cartBadge">0</span>
+    </button>
+    <button class="tab" data-tab="profile">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+      </svg>
+      <span class="label">Profil</span>
+    </button>
+  </nav>
+
+  <!-- Scripts -->
+  <script type="module" src="./db.js"></script>
+  <script type="module" src="./script.js"></script>
+</body>
+</html>
