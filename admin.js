@@ -1,5 +1,5 @@
 // ==========================================
-// BODRUM ADMIN - SKRINSHOT TASDIQLASH VERSION
+// BODRUM ADMIN - FIXED VERSION
 // ==========================================
 
 const SERVER_URL = 'https://backend-production-1bf4.up.railway.app';
@@ -8,7 +8,7 @@ let currentOrderKey = null;
 let orders = [];
 let customers = [];
 let chartInstance = null;
-let currentOrderView = 'new';
+let currentOrderView = 'accepted'; // ⭐ Default to 'accepted' instead of 'new'
 let lastCheckTime = null;
 let pollingInterval = null;
 let isPolling = false;
@@ -18,7 +18,7 @@ let isPolling = false;
 // ==========================================
 
 function init() {
-  console.log('🚀 Admin panel init (Screenshot Verification)');
+  console.log('🚀 Admin panel init (Fixed Version)');
   
   if (window.Telegram?.WebApp) {
     const tg = window.Telegram.WebApp;
@@ -57,6 +57,7 @@ function stopPolling() {
 
 async function checkNewOrders() {
   try {
+    // ⭐ Yangi buyurtmalarni tekshirish (faqat notification uchun)
     const response = await fetch(`${SERVER_URL}/api/orders/new`);
     const newOrders = await response.json();
     
@@ -65,6 +66,7 @@ async function checkNewOrders() {
     newOrders.forEach(order => {
       const exists = orders.find(o => o.orderId === order.orderId || o.order_id === order.order_id);
       if (!exists) {
+        // Yangi buyurtma - notification ko'rsatish
         orders.unshift({
           firebaseKey: order.orderId || order.order_id,
           ...order
@@ -72,25 +74,12 @@ async function checkNewOrders() {
         hasNew = true;
         playNotificationSound();
         showToast(`🛎️ Yangi buyurtma!\n${order.name} - ${order.total?.toLocaleString()} so'm`);
-      } else {
-        const idx = orders.findIndex(o => o.orderId === order.orderId || o.order_id === order.order_id);
-        if (idx !== -1) {
-          const oldStatus = orders[idx].status;
-          orders[idx] = {
-            firebaseKey: order.orderId || order.order_id,
-            ...order
-          };
-          if (oldStatus !== order.status) {
-            console.log('🔄 Status o\'zgardi:', order.orderId, order.status);
-          }
-        }
       }
     });
     
+    // Agar yangi buyurtmalar bo'lsa, badge yangilash
     if (hasNew || newOrders.length > 0) {
-      renderOrders();
-      updateNewOrdersBadge();
-      updateStats();
+      updateNewOrdersBadge(newOrders.length);
     }
     
   } catch (error) {
@@ -104,36 +93,43 @@ async function checkNewOrders() {
 
 async function loadOrders() {
   try {
+    // ⭐ /api/orders endi FAQAT 'accepted' buyurtmalarni qaytaradi
     const response = await fetch(`${SERVER_URL}/api/orders`);
     const data = await response.json();
     
     orders = data.map(order => ({
       firebaseKey: order.orderId || order.order_id,
       ...order
-    })).sort((a, b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at));
+    })).sort((a, b) => {
+      // ⭐ accepted_at bo'yicha sortlash
+      const dateA = new Date(a.acceptedAt || a.accepted_at || a.createdAt || a.created_at);
+      const dateB = new Date(b.acceptedAt || b.accepted_at || b.createdAt || b.created_at);
+      return dateB - dateA;
+    });
     
     renderOrders();
     loadCustomers();
     updateStats();
-    updateNewOrdersBadge();
+    
+    // Yangi buyurtmalar sonini alohida olish
+    const newResponse = await fetch(`${SERVER_URL}/api/orders/new`);
+    const newOrders = await newResponse.json();
+    updateNewOrdersBadge(newOrders.length);
+    
   } catch (error) {
     console.error('❌ Buyurtmalarni yuklash xatosi:', error);
   }
 }
 
-function updateNewOrdersBadge() {
-  const newCount = orders.filter(o => 
-    o.status === 'pending_verification' || o.status === 'payment_pending'
-  ).length;
-  
-  document.getElementById('newOrdersCount').textContent = newCount;
-  document.getElementById('newBadge').textContent = newCount;
-  document.getElementById('ordersNavBadge').textContent = newCount;
+function updateNewOrdersBadge(count) {
+  document.getElementById('newOrdersCount').textContent = count;
+  document.getElementById('newBadge').textContent = count;
+  document.getElementById('ordersNavBadge').textContent = count;
   
   if (window.Telegram?.WebApp?.MainButton) {
     const tg = window.Telegram.WebApp;
-    if (newCount > 0) {
-      tg.MainButton.setText(`🛎️ ${newCount} yangi`);
+    if (count > 0) {
+      tg.MainButton.setText(`🛎️ ${count} yangi`);
       tg.MainButton.show();
     } else {
       tg.MainButton.hide();
@@ -149,86 +145,98 @@ function renderOrders() {
   const container = document.getElementById('ordersListContainer');
   if (!container) return;
   
-  const filtered = orders.filter(o => {
-    if (currentOrderView === 'new') {
-      return o.status === 'pending_verification' || o.status === 'payment_pending';
+  // ⭐ Toggle buttonlarni yangilash
+  document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.textContent.includes('Yangi') && currentOrderView === 'new') {
+      btn.classList.add('active');
+    } else if (btn.textContent.includes('Qabul') && currentOrderView === 'accepted') {
+      btn.classList.add('active');
     }
-    return o.status === 'accepted';
   });
   
-  const newCount = orders.filter(o => 
-    o.status === 'pending_verification' || o.status === 'payment_pending'
-  ).length;
-  
-  document.getElementById('newOrdersCount').textContent = newCount;
-  document.getElementById('newBadge').textContent = newCount;
-  document.getElementById('ordersNavBadge').textContent = newCount;
-  
-  const today = new Date().toDateString();
-  const todayRev = orders
-    .filter(o => {
-      const isToday = new Date(o.createdAt || o.created_at).toDateString() === today;
-      const isPaidOrAccepted = o.paymentStatus === 'paid' || o.status === 'accepted';
-      return isToday && isPaidOrAccepted;
-    })
-    .reduce((sum, o) => sum + (o.total || 0), 0);
-  
-  document.getElementById('todayRevenue').textContent = (todayRev / 1000).toFixed(0) + 'k';
-  
-  if (filtered.length === 0) {
+  // ⭐ Agar 'new' tanlangan bo'lsa, bo'sh ko'rsatish (chunki /api/orders endi faqat accepted qaytaradi)
+  // Yangi buyurtmalar faqat notification uchun, admin panelda ko'rinmaydi
+  if (currentOrderView === 'new') {
     container.innerHTML = `
       <div class="empty-state">
         <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
           <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
           <polyline points="14 2 14 8 20 8"/>
         </svg>
-        <p>${currentOrderView === 'new' ? 'Yangi buyurtmalar yo\'q' : 'Qabul qilingan buyurtmalar yo\'q'}</p>
+        <p>Yangi buyurtmalar Telegram orqali keladi</p>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Admin panelda faqat qabul qilingan buyurtmalar ko'rinadi</p>
       </div>
     `;
     return;
   }
   
-  container.innerHTML = filtered.map(order => createOrderCard(order)).join('');
+  // Bugungi daromad
+  const today = new Date().toDateString();
+  const todayRev = orders
+    .filter(o => {
+      const isToday = new Date(o.acceptedAt || o.accepted_at || o.createdAt || o.created_at).toDateString() === today;
+      return isToday;
+    })
+    .reduce((sum, o) => sum + (o.total || 0), 0);
   
-  container.querySelectorAll('.order-card').forEach(card => {
+  document.getElementById('todayRevenue').textContent = (todayRev / 1000).toFixed(0) + 'k';
+  
+  if (orders.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <p>Qabul qilingan buyurtmalar yo'q</p>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = orders.map((order, index) => createOrderCard(order, index)).join('');
+  
+  // ⭐ Animation uchun staggered delay
+  const cards = container.querySelectorAll('.order-card');
+  cards.forEach((card, i) => {
+    card.style.animationDelay = `${i * 0.05}s`;
     card.addEventListener('click', () => openOrderModal(card.dataset.id));
   });
 }
 
-function createOrderCard(order) {
-  const date = new Date(order.created_at || order.createdAt);
+function createOrderCard(order, index) {
+  const date = new Date(order.acceptedAt || order.accepted_at || order.created_at || order.createdAt);
   const time = date.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+  const dateStr = date.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit' });
   
   let itemsText = '';
   if (order.items && Array.isArray(order.items)) {
     itemsText = order.items.map(i => `${i.name} x${i.qty}`).join(', ');
   }
   
-  const isPending = (order.status === 'pending_verification' || order.status === 'payment_pending');
   const hasScreenshot = order.screenshot ? true : false;
   
   return `
-    <div class="order-card ${isPending ? 'new' : ''}" data-id="${order.firebaseKey}">
+    <div class="order-card accepted" data-id="${order.firebaseKey}" style="animation: slideIn 0.4s ease backwards;">
       ${hasScreenshot ? '<div class="screenshot-badge">📸</div>' : ''}
       <div class="order-header">
         <span class="order-id">#${(order.order_id || order.orderId)?.slice(-6)}</span>
-        <span class="order-time">${time}</span>
+        <span class="order-time">${dateStr} ${time}</span>
       </div>
       <div class="order-customer">${order.name || "Noma'lum"}</div>
       <div class="order-phone">+998 ${order.phone}</div>
       <div class="order-items-preview">${itemsText}</div>
       <div class="order-footer">
         <span class="order-total">${order.total?.toLocaleString()} so'm</span>
-        <span class="order-status ${order.status}">
-          ${isPending ? (hasScreenshot ? '⏳ Tekshirilmoqda 📸' : '⏳ Tekshirilmoqda') : 'Qabul qilingan'}
-        </span>
+        <span class="order-status accepted">✅ Qabul qilingan</span>
       </div>
     </div>
   `;
 }
 
 // ==========================================
-// MODAL - SKRINSHOT KO'RISH VA TASDIQLASH
+// MODAL
 // ==========================================
 
 window.openOrderModal = async function(orderId) {
@@ -254,11 +262,11 @@ window.openOrderModal = async function(orderId) {
   
   // Payment method
   const paymentMethod = order.paymentMethod || 'payme';
-  const paymentStatus = order.paymentStatus || 'pending';
+  const paymentStatus = order.paymentStatus || 'paid';
   const paymentText = paymentStatus === 'paid' ? `${paymentMethod.toUpperCase()} ✅` : paymentMethod.toUpperCase();
   
   document.getElementById('modalPayment').textContent = paymentText;
-  document.getElementById('modalPayment').style.color = paymentStatus === 'paid' ? 'var(--success)' : '';
+  document.getElementById('modalPayment').style.color = 'var(--success)';
   
   // Items
   const items = order.items || [];
@@ -272,14 +280,11 @@ window.openOrderModal = async function(orderId) {
     </div>
   `).join('');
   
-  // ⭐ SKRINSHOT KO'RISH
+  // Skrinshot
   const modalBody = document.querySelector('#orderModal .modal-body');
-  
-  // Eski screenshot ni o'chirish
   const oldScreenshot = document.getElementById('modalScreenshot');
   if (oldScreenshot) oldScreenshot.remove();
   
-  // Yangi screenshot qo'shish
   if (order.screenshot) {
     const screenshotSection = document.createElement('div');
     screenshotSection.id = 'modalScreenshot';
@@ -291,51 +296,46 @@ window.openOrderModal = async function(orderId) {
       </div>
       <p class="screenshot-hint">Kattalashtirish uchun bosing</p>
     `;
-    
-    // Items section dan oldin qo'shish
     const itemsSection = modalBody.querySelector('.items-section');
     modalBody.insertBefore(screenshotSection, itemsSection);
   }
   
-  // Tasdiqlash tugmalari
-  const isPending = order.status === 'pending_verification' || order.status === 'payment_pending';
+  // ⭐ Qabul qilingan buyurtma uchun tugmalarni yashirish
   const actionsDiv = document.getElementById('modalActions');
+  actionsDiv.style.display = 'none';
   
-  if (isPending) {
-    actionsDiv.style.display = 'flex';
-    actionsDiv.innerHTML = `
-      <button class="action-btn reject" onclick="rejectOrder()">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-        Bekor qilish
-      </button>
-      <button class="action-btn accept" onclick="acceptOrder()">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="20 6 9 17 4 12"></polyline>
-        </svg>
-        Qabul qilish
-      </button>
-    `;
-  } else {
-    actionsDiv.style.display = 'none';
-  }
+  // Modalni ko'rsatish
+  const modal = document.getElementById('orderModal');
+  modal.classList.add('show');
   
-  document.getElementById('orderModal').classList.add('show');
+  // ⭐ Smooth animation
+  const content = modal.querySelector('.modal-content');
+  content.style.animation = 'none';
+  setTimeout(() => {
+    content.style.animation = 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+  }, 10);
 };
 
 window.closeModal = function() {
-  document.getElementById('orderModal').classList.remove('show');
-  currentOrderKey = null;
+  const modal = document.getElementById('orderModal');
+  const content = modal.querySelector('.modal-content');
+  
+  // ⭐ Smooth close animation
+  content.style.animation = 'slideDown 0.3s ease forwards';
+  
+  setTimeout(() => {
+    modal.classList.remove('show');
+    currentOrderKey = null;
+    content.style.animation = '';
+  }, 300);
 };
 
-// ⭐ SKRINSHOTNI KATTAROQ KO'RISH
 window.openScreenshotFullscreen = function(src) {
   const overlay = document.createElement('div');
   overlay.className = 'screenshot-fullscreen-overlay';
+  overlay.style.animation = 'fadeIn 0.3s ease';
   overlay.innerHTML = `
-    <div class="screenshot-fullscreen-content">
+    <div class="screenshot-fullscreen-content" style="animation: scaleIn 0.3s ease;">
       <button class="close-fullscreen" onclick="this.parentElement.parentElement.remove()">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -347,116 +347,43 @@ window.openScreenshotFullscreen = function(src) {
   `;
   
   overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.remove();
+    if (e.target === overlay) {
+      overlay.style.animation = 'fadeOut 0.3s ease';
+      setTimeout(() => overlay.remove(), 300);
+    }
   });
   
   document.body.appendChild(overlay);
 };
 
 // ==========================================
-// ACCEPT / REJECT
+// TAB SWITCHING
 // ==========================================
 
-window.acceptOrder = async function() {
-  if (!currentOrderKey) return;
+window.switchTab = function(tabName) {
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.classList.remove('active');
+    if(item.dataset.tab === tabName) item.classList.add('active');
+  });
   
-  const btn = document.querySelector('.action-btn.accept');
-  const originalContent = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="loader"></span> Jarayonda...';
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.remove('active');
+    panel.style.animation = '';
+  });
   
-  try {
-    const order = orders.find(o => o.firebaseKey === currentOrderKey);
-    if (!order) throw new Error('Buyurtma topilmadi');
-
-    const response = await fetch(`${SERVER_URL}/api/orders/${order.order_id || order.orderId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        status: 'accepted',
-        paymentStatus: 'paid',
-        acceptedAt: new Date().toISOString()
-      })
-    });
-    
-    if (!response.ok) throw new Error('Server error');
-    
-    const updatedOrder = await response.json();
-    
-    showToast('✅ Buyurtma qabul qilindi');
-    closeModal();
-    
-    // Mahalliy ro'yxatni yangilash
-    const idx = orders.findIndex(o => o.order_id === order.order_id || o.orderId === order.orderId);
-    if (idx !== -1) {
-      orders[idx] = {
-        firebaseKey: order.order_id || order.orderId,
-        ...updatedOrder
-      };
-      renderOrders();
-      updateNewOrdersBadge();
-    }
-    
-  } catch (e) {
-    console.error('❌ Accept error:', e);
-    showToast('❌ Xatolik: ' + e.message);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = originalContent;
+  const section = document.getElementById(tabName + 'Section');
+  if (section) {
+    section.classList.add('active');
+    // ⭐ Smooth tab transition
+    section.style.animation = 'fadeInUp 0.4s ease';
   }
+  
+  if(tabName === 'stats') updateStats();
 };
 
-window.rejectOrder = async function() {
-  if (!currentOrderKey) return;
-  
-  const reason = prompt('Bekor qilish sababini kiriting:');
-  if (!reason) return;
-  
-  if (!confirm(`Rostdan ham bekor qilmoqchimisiz?\nSabab: ${reason}`)) return;
-  
-  const btn = document.querySelector('.action-btn.reject');
-  const originalContent = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="loader"></span> Jarayonda...';
-  
-  try {
-    const order = orders.find(o => o.firebaseKey === currentOrderKey);
-    if (!order) throw new Error('Buyurtma topilmadi');
-
-    const response = await fetch(`${SERVER_URL}/api/orders/${order.order_id || order.orderId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        status: 'rejected',
-        paymentStatus: 'failed',
-        rejectedAt: new Date().toISOString(),
-        adminNote: reason
-      })
-    });
-    
-    if (!response.ok) throw new Error('Server error');
-    
-    const updatedOrder = await response.json();
-    
-    showToast('❌ Buyurtma bekor qilindi');
-    closeModal();
-    
-    const idx = orders.findIndex(o => o.order_id === order.order_id || o.orderId === order.orderId);
-    if (idx !== -1) {
-      orders[idx] = {
-        firebaseKey: order.order_id || order.orderId,
-        ...updatedOrder
-      };
-      renderOrders();
-    }
-    
-  } catch (e) {
-    console.error('❌ Reject error:', e);
-    showToast('❌ Xatolik: ' + e.message);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = originalContent;
-  }
+window.switchOrderView = function(view) {
+  currentOrderView = view;
+  renderOrders();
 };
 
 // ==========================================
@@ -474,14 +401,15 @@ async function loadCustomers() {
           phone: order.phone,
           orders: 0,
           totalSpent: 0,
-          lastOrder: order.created_at || order.createdAt
+          lastOrder: order.acceptedAt || order.accepted_at || order.created_at || order.createdAt
         });
       }
       const c = customerMap.get(order.phone);
       c.orders++;
       c.totalSpent += order.total || 0;
-      if (new Date(order.created_at || order.createdAt) > new Date(c.lastOrder)) {
-        c.lastOrder = order.created_at || order.createdAt;
+      const orderDate = new Date(order.acceptedAt || order.accepted_at || order.created_at || order.createdAt);
+      if (orderDate > new Date(c.lastOrder)) {
+        c.lastOrder = order.acceptedAt || order.accepted_at || order.created_at || order.createdAt;
       }
     });
     
@@ -511,7 +439,7 @@ function renderCustomers() {
   if (!container) return;
   
   container.innerHTML = filtered.map((c, i) => `
-    <div class="customer-item" onclick="viewCustomer('${c.phone}')">
+    <div class="customer-item" onclick="viewCustomer('${c.phone}')" style="animation: slideInLeft 0.4s ease ${i * 0.05}s backwards;">
       <div class="customer-avatar">${c.name.charAt(0).toUpperCase()}</div>
       <div class="customer-info">
         <div class="customer-name">${c.name}</div>
@@ -528,29 +456,6 @@ function renderCustomers() {
   `).join('');
 }
 
-window.switchTab = function(tabName) {
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.classList.remove('active');
-    if(item.dataset.tab === tabName) item.classList.add('active');
-  });
-  
-  document.querySelectorAll('.tab-panel').forEach(panel => {
-    panel.classList.remove('active');
-  });
-  
-  const section = document.getElementById(tabName + 'Section');
-  if (section) section.classList.add('active');
-  
-  if(tabName === 'stats') updateStats();
-};
-
-window.switchOrderView = function(view) {
-  currentOrderView = view;
-  document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
-  if (event && event.target) event.target.classList.add('active');
-  renderOrders();
-};
-
 window.searchCustomers = function() {
   renderCustomers();
 };
@@ -560,7 +465,7 @@ window.viewCustomer = function(phone) {
   if (!c) return;
   
   const customerOrders = orders.filter(o => o.phone === phone).sort((a,b) => 
-    new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt)
+    new Date(b.acceptedAt || b.accepted_at || b.created_at || b.createdAt) - new Date(a.acceptedAt || a.accepted_at || a.created_at || a.createdAt)
   );
   
   const content = document.getElementById('customerDetailContent');
@@ -592,14 +497,14 @@ window.viewCustomer = function(phone) {
       Buyurtmalar tarixi (${customerOrders.length})
     </h4>
     <div style="display: flex; flex-direction: column; gap: 8px;">
-      ${customerOrders.slice(0, 10).map(o => `
-        <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; border: 1px solid #333;">
+      ${customerOrders.slice(0, 10).map((o, i) => `
+        <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; border: 1px solid #333; animation: slideInRight 0.3s ease ${i * 0.05}s backwards;">
           <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
             <span style="font-weight: 600;">#${(o.order_id || o.orderId)?.slice(-6)}</span>
             <span style="color: #00ff88; font-weight: 700;">${o.total?.toLocaleString()} so'm</span>
           </div>
           <div style="font-size: 12px; color: #666;">
-            ${new Date(o.created_at || o.createdAt).toLocaleDateString('uz-UZ')} • ${(o.items || []).length} ta mahsulot
+            ${new Date(o.acceptedAt || o.accepted_at || o.created_at || o.createdAt).toLocaleDateString('uz-UZ')} • ${(o.items || []).length} ta mahsulot
             ${o.screenshot ? ' • 📸' : ''}
           </div>
         </div>
@@ -607,11 +512,23 @@ window.viewCustomer = function(phone) {
     </div>
   `;
   
-  document.getElementById('customerModal').classList.add('show');
+  const modal = document.getElementById('customerModal');
+  modal.classList.add('show');
+  
+  const content2 = modal.querySelector('.modal-content');
+  content2.style.animation = 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
 };
 
 window.closeCustomerModal = function() {
-  document.getElementById('customerModal').classList.remove('show');
+  const modal = document.getElementById('customerModal');
+  const content = modal.querySelector('.modal-content');
+  
+  content.style.animation = 'slideDown 0.3s ease forwards';
+  
+  setTimeout(() => {
+    modal.classList.remove('show');
+    content.style.animation = '';
+  }, 300);
 };
 
 window.setPeriod = function(period) {
@@ -629,8 +546,8 @@ function updateStats(period = 'day') {
   else if (period === 'month') startDate.setMonth(now.getMonth() - 1);
   
   const filtered = orders.filter(o => {
-    const d = new Date(o.created_at || o.createdAt);
-    return d >= startDate && d <= now && (o.status === 'accepted' || o.paymentStatus === 'paid');
+    const d = new Date(o.acceptedAt || o.accepted_at || o.created_at || o.createdAt);
+    return d >= startDate && d <= now;
   });
   
   const revenue = filtered.reduce((sum, o) => sum + (o.total || 0), 0);
@@ -645,7 +562,7 @@ function updateStats(period = 'day') {
   
   const dailyData = {};
   filtered.forEach(o => {
-    const d = new Date(o.created_at || o.createdAt).toLocaleDateString('uz-UZ', { weekday: 'short' });
+    const d = new Date(o.acceptedAt || o.accepted_at || o.created_at || o.createdAt).toLocaleDateString('uz-UZ', { weekday: 'short' });
     dailyData[d] = (dailyData[d] || 0) + o.total;
   });
   
@@ -696,7 +613,7 @@ function updateStats(period = 'day') {
   const sorted = Object.entries(productStats).sort((a,b) => b[1] - a[1]).slice(0, 5);
   
   document.getElementById('topProductsList').innerHTML = sorted.map((item, i) => `
-    <div class="top-item">
+    <div class="top-item" style="animation: slideInLeft 0.4s ease ${i * 0.05}s backwards;">
       <div class="top-rank ${i < 3 ? ['gold', 'silver', 'bronze'][i] : ''}">${i + 1}</div>
       <div class="top-info">
         <div class="top-name">${item[0]}</div>
@@ -728,7 +645,7 @@ function showToast(msg) {
     position: fixed; 
     top: 50%; 
     left: 50%; 
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(0.9);
     background: rgba(10,10,10,0.95); 
     color: white; 
     padding: 20px 28px;
@@ -740,16 +657,14 @@ function showToast(msg) {
     max-width: 80%; 
     text-align: center;
     box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-    animation: fadeIn 0.3s ease;
+    animation: toastIn 0.3s ease forwards;
     white-space: pre-line;
   `;
   div.textContent = msg;
   document.body.appendChild(div);
   
   setTimeout(() => {
-    div.style.opacity = '0';
-    div.style.transform = 'translate(-50%, -60%)';
-    div.style.transition = 'all 0.3s ease';
+    div.style.animation = 'toastOut 0.3s ease forwards';
     setTimeout(() => div.remove(), 300);
   }, 3000);
 }
@@ -757,9 +672,41 @@ function showToast(msg) {
 // CSS qo'shish
 const style = document.createElement('style');
 style.textContent = `
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translate(-50%, -40%); }
-    to { opacity: 1; transform: translate(-50%, -50%); }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+  @keyframes toastOut {
+    from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    to { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slideInRight {
+    from { opacity: 0; transform: translateX(30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideDown {
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(100%); opacity: 0; }
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
   }
   .loader {
     display: inline-block;
@@ -809,6 +756,12 @@ style.textContent = `
     overflow: hidden;
     border: 2px solid rgba(212, 175, 55, 0.3);
     cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .screenshot-image-wrapper:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.3);
   }
   
   .screenshot-image-wrapper img {
@@ -864,13 +817,20 @@ style.textContent = `
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .close-fullscreen:hover {
+    background: var(--gold-primary);
+    color: #000;
+    transform: rotate(90deg);
   }
 `;
 document.head.appendChild(style);
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 DOMContentLoaded - Admin Screenshot Version');
+  console.log('🚀 DOMContentLoaded - Admin Fixed Version');
   init();
 });
 
