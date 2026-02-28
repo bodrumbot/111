@@ -1,5 +1,5 @@
 // ==========================================
-// BODRUM ADMIN - FIXED VERSION
+// BODRUM ADMIN - FAQAT QABUL QILINGAN BUYURTMALAR
 // ==========================================
 
 const SERVER_URL = 'https://backend-production-1bf4.up.railway.app';
@@ -8,7 +8,6 @@ let currentOrderKey = null;
 let orders = [];
 let customers = [];
 let chartInstance = null;
-let currentOrderView = 'accepted'; // ⭐ Default to 'accepted' instead of 'new'
 let lastCheckTime = null;
 let pollingInterval = null;
 let isPolling = false;
@@ -18,7 +17,7 @@ let isPolling = false;
 // ==========================================
 
 function init() {
-  console.log('🚀 Admin panel init (Fixed Version)');
+  console.log('🚀 Admin panel init (Faqat qabul qilinganlar)');
   
   if (window.Telegram?.WebApp) {
     const tg = window.Telegram.WebApp;
@@ -57,30 +56,22 @@ function stopPolling() {
 
 async function checkNewOrders() {
   try {
-    // ⭐ Yangi buyurtmalarni tekshirish (faqat notification uchun)
+    // Yangi buyurtmalarni tekshirish (faqat notification uchun)
     const response = await fetch(`${SERVER_URL}/api/orders/new`);
     const newOrders = await response.json();
     
-    let hasNew = false;
+    // Yangi buyurtmalar sonini badge da ko'rsatish (faqat notification)
+    const newCount = newOrders.length;
+    updateNewOrdersBadge(newCount);
     
+    // Agar yangi buyurtma bo'lsa, notification ko'rsatish
     newOrders.forEach(order => {
       const exists = orders.find(o => o.orderId === order.orderId || o.order_id === order.order_id);
       if (!exists) {
-        // Yangi buyurtma - notification ko'rsatish
-        orders.unshift({
-          firebaseKey: order.orderId || order.order_id,
-          ...order
-        });
-        hasNew = true;
         playNotificationSound();
         showToast(`🛎️ Yangi buyurtma!\n${order.name} - ${order.total?.toLocaleString()} so'm`);
       }
     });
-    
-    // Agar yangi buyurtmalar bo'lsa, badge yangilash
-    if (hasNew || newOrders.length > 0) {
-      updateNewOrdersBadge(newOrders.length);
-    }
     
   } catch (error) {
     console.error('❌ Polling xatosi:', error);
@@ -93,7 +84,7 @@ async function checkNewOrders() {
 
 async function loadOrders() {
   try {
-    // ⭐ /api/orders endi FAQAT 'accepted' buyurtmalarni qaytaradi
+    // Faqat 'accepted' buyurtmalarni olish
     const response = await fetch(`${SERVER_URL}/api/orders`);
     const data = await response.json();
     
@@ -101,7 +92,7 @@ async function loadOrders() {
       firebaseKey: order.orderId || order.order_id,
       ...order
     })).sort((a, b) => {
-      // ⭐ accepted_at bo'yicha sortlash
+      // accepted_at bo'yicha sortlash
       const dateA = new Date(a.acceptedAt || a.accepted_at || a.createdAt || a.created_at);
       const dateB = new Date(b.acceptedAt || b.accepted_at || b.createdAt || b.created_at);
       return dateB - dateA;
@@ -111,7 +102,7 @@ async function loadOrders() {
     loadCustomers();
     updateStats();
     
-    // Yangi buyurtmalar sonini alohida olish
+    // Yangi buyurtmalar sonini alohida olish (faqat badge uchun)
     const newResponse = await fetch(`${SERVER_URL}/api/orders/new`);
     const newOrders = await newResponse.json();
     updateNewOrdersBadge(newOrders.length);
@@ -123,7 +114,6 @@ async function loadOrders() {
 
 function updateNewOrdersBadge(count) {
   document.getElementById('newOrdersCount').textContent = count;
-  document.getElementById('newBadge').textContent = count;
   document.getElementById('ordersNavBadge').textContent = count;
   
   if (window.Telegram?.WebApp?.MainButton) {
@@ -138,39 +128,18 @@ function updateNewOrdersBadge(count) {
 }
 
 // ==========================================
-// RENDER ORDERS
+// RENDER ORDERS - FAQAT QABUL QILINGANLAR
 // ==========================================
 
 function renderOrders() {
   const container = document.getElementById('ordersListContainer');
   if (!container) return;
   
-  // ⭐ Toggle buttonlarni yangilash
-  document.querySelectorAll('.toggle-btn').forEach(btn => {
-    btn.classList.remove('active');
-    if (btn.textContent.includes('Yangi') && currentOrderView === 'new') {
-      btn.classList.add('active');
-    } else if (btn.textContent.includes('Qabul') && currentOrderView === 'accepted') {
-      btn.classList.add('active');
-    }
-  });
-  
-  // ⭐ Agar 'new' tanlangan bo'lsa, bo'sh ko'rsatish (chunki /api/orders endi faqat accepted qaytaradi)
-  // Yangi buyurtmalar faqat notification uchun, admin panelda ko'rinmaydi
-  if (currentOrderView === 'new') {
-    container.innerHTML = `
-      <div class="empty-state">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-        </svg>
-        <p>Yangi buyurtmalar Telegram orqali keladi</p>
-        <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Admin panelda faqat qabul qilingan buyurtmalar ko'rinadi</p>
-      </div>
-    `;
-    return;
-  }
-  
+  // Faqat qabul qilingan buyurtmalarni ko'rsatish
+  renderAcceptedOrders(container);
+}
+
+function renderAcceptedOrders(container) {
   // Bugungi daromad
   const today = new Date().toDateString();
   const todayRev = orders
@@ -197,7 +166,7 @@ function renderOrders() {
   
   container.innerHTML = orders.map((order, index) => createOrderCard(order, index)).join('');
   
-  // ⭐ Animation uchun staggered delay
+  // Animation uchun staggered delay
   const cards = container.querySelectorAll('.order-card');
   cards.forEach((card, i) => {
     card.style.animationDelay = `${i * 0.05}s`;
@@ -300,7 +269,7 @@ window.openOrderModal = async function(orderId) {
     modalBody.insertBefore(screenshotSection, itemsSection);
   }
   
-  // ⭐ Qabul qilingan buyurtma uchun tugmalarni yashirish
+  // Modal footer yashirilgan (faqat ma'lumot ko'rsatish uchun)
   const actionsDiv = document.getElementById('modalActions');
   actionsDiv.style.display = 'none';
   
@@ -308,7 +277,7 @@ window.openOrderModal = async function(orderId) {
   const modal = document.getElementById('orderModal');
   modal.classList.add('show');
   
-  // ⭐ Smooth animation
+  // Smooth animation
   const content = modal.querySelector('.modal-content');
   content.style.animation = 'none';
   setTimeout(() => {
@@ -320,7 +289,7 @@ window.closeModal = function() {
   const modal = document.getElementById('orderModal');
   const content = modal.querySelector('.modal-content');
   
-  // ⭐ Smooth close animation
+  // Smooth close animation
   content.style.animation = 'slideDown 0.3s ease forwards';
   
   setTimeout(() => {
@@ -374,16 +343,11 @@ window.switchTab = function(tabName) {
   const section = document.getElementById(tabName + 'Section');
   if (section) {
     section.classList.add('active');
-    // ⭐ Smooth tab transition
+    // Smooth tab transition
     section.style.animation = 'fadeInUp 0.4s ease';
   }
   
   if(tabName === 'stats') updateStats();
-};
-
-window.switchOrderView = function(view) {
-  currentOrderView = view;
-  renderOrders();
 };
 
 // ==========================================
@@ -708,19 +672,6 @@ style.textContent = `
     from { opacity: 1; }
     to { opacity: 0; }
   }
-  .loader {
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(0,0,0,0.3);
-    border-top-color: currentColor;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin-right: 8px;
-  }
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
   
   /* Screenshot styles */
   .screenshot-badge {
@@ -830,7 +781,7 @@ document.head.appendChild(style);
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 DOMContentLoaded - Admin Fixed Version');
+  console.log('🚀 DOMContentLoaded - Admin (Faqat qabul qilinganlar)');
   init();
 });
 
