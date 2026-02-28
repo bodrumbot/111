@@ -10,8 +10,6 @@
   <link rel="stylesheet" href="admin.css"/>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Socket.io -->
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
   <!-- Header -->
@@ -46,13 +44,9 @@
         </div>
       </div>
 
-      <div class="orders-toggle">
-        <button class="toggle-btn active" onclick="switchOrderView('new')">
-          ⏳ Yangi <span class="badge" id="newBadge">0</span>
-        </button>
-        <button class="toggle-btn" onclick="switchOrderView('accepted')">
-          ✅ Qabul qilingan
-        </button>
+      <!-- Faqat qabul qilingan buyurtmalar sarlavhasi -->
+      <div class="orders-header-simple">
+        <h3>✅ Qabul qilingan buyurtmalar</h3>
       </div>
 
       <div class="orders-list-container" id="ordersListContainer">
@@ -60,7 +54,7 @@
           <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
           </svg>
-          <p>Yangi buyurtmalar yo'q</p>
+          <p>Qabul qilingan buyurtmalar yo'q</p>
         </div>
       </div>
     </section>
@@ -250,20 +244,9 @@
         </div>
       </div>
 
-      <div class="modal-footer" id="modalActions">
-        <button class="action-btn reject" onclick="rejectOrder()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-          Bekor qilish
-        </button>
-        <button class="action-btn accept" onclick="acceptOrder()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-          Qabul qilish
-        </button>
+      <!-- Modal footer - tugmalar yashirilgan (faqat ma'lumot ko'rsatish uchun) -->
+      <div class="modal-footer" id="modalActions" style="display: none;">
+        <!-- Tugmalar olib tashlandi, chunki faqat qabul qilingan buyurtmalar ko'rsatiladi -->
       </div>
     </div>
   </div>
@@ -286,7 +269,7 @@
 
   <!-- Audio -->
   <audio id="notifySound" preload="auto">
-    <source src="data:audio/wav;base64,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" type="audio/wav">
+    <source src="data:audio/wav;base64,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" type="audio/wav">
   </audio>
 
   <!-- Admin script -->
