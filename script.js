@@ -1,9 +1,8 @@
 // ==========================================
-// BODRUM - Telegram orqali avtomatik profil
+// BODRUM - Telegram orqali avtomatik profil (TO'G'RILANGAN)
 // ==========================================
 
 import { getMenuFromLocal, categories } from './menu.js';
-import { getOrdersDB, addOrderDB } from './db.js';
 
 // ==========================================
 // GLOBAL VARIABLES
@@ -28,7 +27,8 @@ let currentOrderId = null;
 let pendingPaymentData = null;
 let selectedScreenshot = null;
 let botConfirmationCheckInterval = null;
-let userProfile = null; // Telegram dan olingan profil
+let userProfile = null;
+let userOrders = [];
 
 // PAYME CONFIG
 const PAYME_MERCHANT_ID = '698d8268f7c89c2bb7cfc08e';
@@ -41,7 +41,7 @@ const searchInput = document.getElementById('searchInput');
 const foodModal = document.getElementById('foodDetailModal');
 const paymeInstructionModal = document.getElementById('paymeInstructionModal');
 
-// Profile elements (faqat ko'rsatish uchun)
+// Profile elements
 const profileAvatar = document.getElementById('profileAvatar');
 const profileName = document.getElementById('profileName');
 const profilePhone = document.getElementById('profilePhone');
@@ -95,43 +95,51 @@ function showNotification(message, type = 'info') {
 }
 
 // ==========================================
-// PROFILE - Telegram dan olish
+// PROFILE - Telegram dan olish (TO'G'RILANGAN)
 // ==========================================
 
 async function loadUserProfile() {
   try {
-    // 1. Avval localStorage dan tekshirish
-    const savedProfile = localStorage.getItem('bodrum_user_profile');
-    if (savedProfile) {
-      userProfile = JSON.parse(savedProfile);
-      renderProfile();
+    // 1. Telegram ID olish
+    const tgId = tg?.initDataUnsafe?.user?.id;
+    
+    if (!tgId) {
+      console.log('⚠️ Telegram ID topilmadi');
+      showProfileNotFound();
       return;
     }
     
-    // 2. Telegram dan olish
-    if (tg?.initDataUnsafe?.user?.id) {
-      const tgId = tg.initDataUnsafe.user.id;
-      
-      // Backend dan profilni olish
-      const response = await fetch(`${SERVER_URL}/api/user/profile`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tgId: tgId })
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        if (result.profile && result.profile.phone) {
-          userProfile = result.profile;
-          localStorage.setItem('bodrum_user_profile', JSON.stringify(userProfile));
-          renderProfile();
-          return;
-        }
-      }
+    console.log('🔍 Profil yuklanmoqda, tgId:', tgId);
+    
+    // 2. Backend dan profil va buyurtmalarni olish
+    const response = await fetch(`${SERVER_URL}/api/user/profile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tgId: tgId })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
     
-    // 3. Profil topilmadi - botga yo'naltirish
-    showProfileNotFound();
+    const result = await response.json();
+    console.log('✅ Profil ma\'lumotlari:', result);
+    
+    if (result.success) {
+      userProfile = result.profile;
+      userOrders = result.orders || [];
+      
+      if (userProfile && userProfile.phone) {
+        // Profil mavjud - ko'rsatish
+        renderProfile();
+        renderOrdersList(userOrders);
+      } else {
+        // Profil topilmadi
+        showProfileNotFound();
+      }
+    } else {
+      showProfileNotFound();
+    }
     
   } catch (error) {
     console.error('❌ Profil yuklash xatosi:', error);
@@ -142,17 +150,45 @@ async function loadUserProfile() {
 function renderProfile() {
   if (!userProfile) return;
   
+  const name = userProfile.name || 'Foydalanuvchi';
+  const phone = userProfile.phone || '';
+  
   // Asosiy profil kartasi
-  profileAvatar.textContent = getInitials(userProfile.name);
-  profileName.textContent = userProfile.name || 'Foydalanuvchi';
-  profilePhone.textContent = formatPhone(userProfile.phone);
+  profileAvatar.textContent = getInitials(name);
+  profileName.textContent = name;
+  profilePhone.textContent = formatPhone(phone);
+  profileSource.textContent = '🤖 Telegram orqali';
   
   // Ma'lumotlar ko'rsatish qismi
-  displayName.textContent = userProfile.name || '---';
-  displayPhone.textContent = formatPhone(userProfile.phone);
+  displayName.textContent = name;
+  displayPhone.textContent = formatPhone(phone);
   
-  // Statistikani yuklash
-  loadProfileStats();
+  // Statistikani hisoblash
+  updateProfileStats();
+}
+
+function updateProfileStats() {
+  if (!userOrders) return;
+  
+  const totalOrders = userOrders.length;
+  const totalSpent = userOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  
+  // DOM elementlarni yangilash
+  const totalOrdersEl = document.getElementById('totalOrders');
+  const totalSpentEl = document.getElementById('totalSpent');
+  const ordersCountBadgeEl = document.getElementById('ordersCountBadge');
+  const vipStatusEl = document.getElementById('vipStatus');
+  
+  if (totalOrdersEl) totalOrdersEl.textContent = totalOrders;
+  if (totalSpentEl) totalSpentEl.textContent = (totalSpent / 1000).toFixed(0) + 'k';
+  if (ordersCountBadgeEl) ordersCountBadgeEl.textContent = totalOrders;
+  
+  if (vipStatusEl) {
+    if (totalOrders >= 20) vipStatusEl.textContent = '💎';
+    else if (totalOrders >= 10) vipStatusEl.textContent = '🥇';
+    else if (totalOrders >= 5) vipStatusEl.textContent = '🥈';
+    else vipStatusEl.textContent = '🥉';
+  }
 }
 
 function showProfileNotFound() {
@@ -171,35 +207,24 @@ function showProfileNotFound() {
     infoNote.style.background = 'rgba(255, 71, 87, 0.1)';
     infoNote.style.borderColor = 'rgba(255, 71, 87, 0.3)';
   }
-}
-
-async function loadProfileStats() {
-  try {
-    const orders = await getOrdersDB();
-    
-    const totalOrders = orders.length;
-    const totalSpent = orders.reduce((sum, o) => sum + (o.total || 0), 0);
-    
-    document.getElementById('totalOrders').textContent = totalOrders;
-    document.getElementById('totalSpent').textContent = (totalSpent / 1000).toFixed(0) + 'k';
-    document.getElementById('ordersCountBadge').textContent = totalOrders;
-    
-    const vipStatus = document.getElementById('vipStatus');
-    if (totalOrders >= 20) vipStatus.textContent = '💎';
-    else if (totalOrders >= 10) vipStatus.textContent = '🥇';
-    else if (totalOrders >= 5) vipStatus.textContent = '🥈';
-    else vipStatus.textContent = '🥉';
-    
-    renderOrdersList(orders);
-  } catch (error) {
-    console.error('loadProfileStats xato:', error);
-  }
+  
+  // Statistika 0
+  const totalOrdersEl = document.getElementById('totalOrders');
+  const totalSpentEl = document.getElementById('totalSpent');
+  const ordersCountBadgeEl = document.getElementById('ordersCountBadge');
+  const vipStatusEl = document.getElementById('vipStatus');
+  
+  if (totalOrdersEl) totalOrdersEl.textContent = '0';
+  if (totalSpentEl) totalSpentEl.textContent = '0';
+  if (ordersCountBadgeEl) ordersCountBadgeEl.textContent = '0';
+  if (vipStatusEl) vipStatusEl.textContent = '🥉';
 }
 
 function renderOrdersList(orders) {
   const container = document.getElementById('ordersList');
+  if (!container) return;
   
-  if (orders.length === 0) {
+  if (!orders || orders.length === 0) {
     container.innerHTML = `
       <div class="empty-orders">
         <div class="empty-orders-icon">📭</div>
@@ -211,31 +236,44 @@ function renderOrdersList(orders) {
   }
   
   container.innerHTML = orders.slice(0, 10).map(order => {
-    const date = new Date(order.createdAt || order.date);
-    const itemsText = order.items ? order.items.map(i => `${i.name} x${i.qty}`).join(', ') : order.text;
+    const date = new Date(order.created_at || order.createdAt);
+    const items = order.items || [];
+    let itemsText = '';
+    
+    if (typeof items === 'string') {
+      try {
+        const parsed = JSON.parse(items);
+        itemsText = parsed.map(i => `${i.name} x${i.qty}`).join(', ');
+      } catch (e) {
+        itemsText = items;
+      }
+    } else if (Array.isArray(items)) {
+      itemsText = items.map(i => `${i.name} x${i.qty}`).join(', ');
+    }
     
     let statusClass = 'pending';
     let statusText = '⏳ Kutilmoqda';
     
-    const status = order.status || order.paymentStatus;
+    const status = order.status;
+    const paymentStatus = order.payment_status || order.paymentStatus;
     
-    if (status === 'pending_verification') {
-      statusClass = 'pending';
-      statusText = '⏳ Tekshirilmoqda';
-    } else if (status === 'accepted' || status === 'paid') {
+    if (status === 'accepted' || paymentStatus === 'paid') {
       statusClass = 'accepted';
       statusText = '✅ Qabul qilingan';
     } else if (status === 'rejected') {
       statusClass = 'rejected';
       statusText = '❌ Bekor qilingan';
+    } else if (status === 'pending_verification') {
+      statusClass = 'pending';
+      statusText = '⏳ Tekshirilmoqda';
     }
     
-    const hasScreenshot = order.screenshot ? '📸 ' : '';
+    const hasScreenshot = order.screenshot || order.screenshot_name;
     
     return `
       <div class="order-history-card">
         <div class="order-history-header">
-          <span class="order-history-id">${hasScreenshot}#${order.orderId?.slice(-6) || '-----'}</span>
+          <span class="order-history-id">${hasScreenshot ? '📸 ' : ''}#${(order.order_id || order.orderId || '-----').slice(-6)}</span>
           <span class="order-history-date">${date.toLocaleDateString('uz-UZ')}</span>
         </div>
         <div class="order-history-items">${itemsText}</div>
@@ -474,7 +512,11 @@ document.querySelectorAll('.tab').forEach(btn => {
     document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'profile') loadUserProfile();
+    
+    // ⭐ Profil tab'ga o'tganda ma'lumotlarni yangilash
+    if (btn.dataset.tab === 'profile') {
+      loadUserProfile();
+    }
   });
 });
 
@@ -483,7 +525,10 @@ window.switchTab = function(tabName) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelector(`[data-tab="${tabName}"]`)?.classList.add('active');
   document.getElementById(tabName)?.classList.add('active');
-  if (tabName === 'profile') loadUserProfile();
+  
+  if (tabName === 'profile') {
+    loadUserProfile();
+  }
 };
 
 // ==========================================
@@ -513,7 +558,6 @@ window.closeInstructionModal = function() {
   document.body.style.overflow = '';
 };
 
-// "Tushundim" tugmasi
 document.getElementById('understandBtn').addEventListener('click', async () => {
   if (!pendingPaymentData) {
     console.error('pendingPaymentData is null');
@@ -542,7 +586,6 @@ document.getElementById('understandBtn').addEventListener('click', async () => {
     console.error('Initiated mark error:', error);
   }
   
-  // Muvaffaqiyatli - Payme ga o'tish
   closeInstructionModal();
   
   setTimeout(() => {
@@ -685,7 +728,6 @@ window.confirmPaymentFromWebApp = async function() {
     }
   }
   
-  // To'g'ridan-to'g'ri screenshot yuklash oynasini ochish
   proceedToScreenshot();
 };
 
@@ -859,15 +901,12 @@ window.submitOrderWithScreenshot = async function() {
     
     const order = await response.json();
     
-    await addOrderDB({
-      text: cart.map(i => `${i.name} x${i.qty}`).join(', '),
-      date: new Date().toISOString(),
-      total: total,
-      items: cart.map(item => ({ name: item.name, qty: item.qty })),
-      status: 'pending_verification',
-      orderId: currentOrderId,
-      screenshot: base64Screenshot
-    });
+    // ⭐ YANGI BUYURTMANI RO'YXATGA QO'SHISH
+    if (order) {
+      userOrders.unshift(order);
+      updateProfileStats();
+      renderOrdersList(userOrders);
+    }
     
     const modal = document.getElementById('screenshotModal');
     modal.style.display = 'none';
@@ -905,14 +944,16 @@ function fileToBase64(file) {
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 DOMContentLoaded - Telegram Auto Profile Version');
+  console.log('🚀 DOMContentLoaded - BODRUM WebApp');
   
   try {
     loadCartLS();
     renderCategories();
     renderMenu();
     renderCart();
-    loadUserProfile(); // Profilni yuklash
+    
+    // ⭐ Sahifa yuklanganda profilni yuklash
+    loadUserProfile();
   } catch (error) {
     console.error('Init xato:', error);
   }
