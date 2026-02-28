@@ -9,8 +9,6 @@
   <title>BODRUM</title>
   <link rel="stylesheet" href="style.css"/>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <!-- Socket.io -->
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
   <!-- MENYU TAB -->
@@ -44,7 +42,7 @@
     </main>
   </section>
 
-  <!-- PROFIL TAB -->
+  <!-- PROFIL TAB - FAQAT KO'RISH UCHUN -->
   <section id="profile" class="tab-content">
     <div class="profile-container">
       <div class="profile-header-card">
@@ -52,6 +50,7 @@
           <div class="profile-avatar" id="profileAvatar">👤</div>
           <div class="profile-name" id="profileName">Mehmon</div>
           <div class="profile-phone" id="profilePhone">+998 __ _______</div>
+          <div class="profile-source" id="profileSource">🤖 Telegram orqali</div>
         </div>
         
         <div class="profile-stats">
@@ -73,29 +72,31 @@
         </div>
       </div>
 
-      <div class="info-card">
+      <!-- Ma'lumotlar kartasi - FAQAT KO'RISH -->
+      <div class="info-card read-only">
         <div class="info-card-header">
-          <div class="info-card-icon">✏️</div>
+          <div class="info-card-icon">👤</div>
           <div>
-            <div class="info-card-title">Ma'lumotlarni tahrirlash</div>
-            <div class="info-card-subtitle">Buyurtma uchun kerak</div>
+            <div class="info-card-title">Mijoz ma'lumotlari</div>
+            <div class="info-card-subtitle">Telegram orqali avtomatik olingan</div>
           </div>
         </div>
         
-        <div class="profile-input-group">
-          <span class="profile-input-icon">👤</span>
-          <input type="text" id="editName" placeholder="Ismingiz" maxlength="30">
+        <div class="profile-info-display">
+          <div class="info-item">
+            <span class="info-label">Ism:</span>
+            <span class="info-value" id="displayName">---</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Telefon:</span>
+            <span class="info-value" id="displayPhone">---</span>
+          </div>
         </div>
         
-        <div class="profile-input-group">
-          <span class="profile-input-icon">📱</span>
-          <input type="tel" id="editPhone" placeholder="90 123 45 67" maxlength="9">
+        <div class="info-note">
+          <span>ℹ️</span>
+          <span>Ma'lumotlarni o'zgartirish uchun botga /start buyrug'ini yuboring</span>
         </div>
-        
-        <button class="save-profile-btn" id="saveProfileBtn">
-          <span>💾</span>
-          <span>Saqlash</span>
-        </button>
       </div>
 
       <div class="orders-section">
@@ -105,35 +106,8 @@
         </div>
         <div id="ordersList"></div>
       </div>
-
-      <button class="logout-btn" id="logoutBtn">
-        <span>🚪</span>
-        <span>Akkauntdan chiqish</span>
-      </button>
     </div>
   </section>
-
-  <!-- FIRST TIME PROFILE MODAL -->
-  <div id="firstTimeModal" class="profile-modal-overlay">
-    <div class="profile-modal-box">
-      <div class="profile-modal-icon">👋</div>
-      <div class="profile-modal-title">Xush kelibsiz!</div>
-      <div class="profile-modal-text">
-        Buyurtma berish uchun iltimos, ma'lumotlaringizni to'ldiring
-      </div>
-      <div class="profile-modal-inputs">
-        <div class="profile-input-group">
-          <span class="profile-input-icon">👤</span>
-          <input type="text" id="modalName" placeholder="Ismingiz" maxlength="30">
-        </div>
-        <div class="profile-input-group">
-          <span class="profile-input-icon">📱</span>
-          <input type="tel" id="modalPhone" placeholder="90 123 45 67" maxlength="9">
-        </div>
-      </div>
-      <button class="profile-modal-btn" id="modalSaveBtn">Davom etish</button>
-    </div>
-  </div>
 
   <!-- FOOD DETAIL MODAL -->
   <div id="foodDetailModal" class="modal-overlay">
@@ -165,7 +139,7 @@
     </div>
   </div>
 
-  <!-- PAYME INSTRUCTION MODAL (YANGI) -->
+  <!-- PAYME INSTRUCTION MODAL -->
   <div id="paymeInstructionModal" class="modal-overlay">
     <div class="modal-box instruction-modal">
       <div class="modal-title">💳 Payme orqali to'lov</div>
@@ -195,11 +169,10 @@
           </div>
         </div>
         
-        <!-- NAMUNA SKRINSHOT -->
         <div class="screenshot-example">
           <div class="example-label">📸 Namuna skrinshot:</div>
           <div class="example-image-wrapper">
-            <img src="https://i.ibb.co/placeholder/payme-screenshot-example.png" 
+            <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjgwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjgwMCIgZmlsbD0iIzFhMWEyMiIvPgogIDx0ZXh0IHg9IjUwJSIgeT0iMzAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiNGRkQ3MDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPgogICAg8J+TjCBQYXltZSBza3JpbnNob3QKICA8L3RleHQ+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzAwRDA4NCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+CiAgICA8L3RleHQ+CiAgPHRleHQgeD0iNTAlIiB5PSI2MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2FhYSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+CiAgICBUb2xvdCBtdXZhZmZhcWl5YXRsaSBib2xnYW4geGFib24KICA8L3RleHQ+CiAgPGNpcmNsZSBjeD0iNTAlIiBjeT0iNzAlIiByPSI0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDBEMDg0IiBzdHJva2Utd2lkdGg9IjMiLz4KICA8cGF0aCBkPSJNMTgwIDM1MCBsMjAgMjAgbDQwIC00MCIgc3Ryb2tlPSIjMDBEMDg0IiBzdHJva2Utd2lkdGg9IjMiIGZpbGw9Im5vbmUiLz4KPC9zdmc+" 
                 alt="Payme skrinshot namuna" 
                 id="exampleScreenshot">
             <div class="example-overlay">
@@ -226,31 +199,65 @@
     </div>
   </div>
 
-  <!-- ESKI PAYMENT MODAL (endilikda 2-qadam) -->
-  <div id="paymentModal" class="modal-overlay">
-    <div class="modal-box payment-modal">
-      <div class="modal-title">💳 To'lov ma'lumotlari</div>
-      
-      <div class="payment-amount">
-        <span class="amount-label">To'lov summasi:</span>
-        <span id="paymentTotal" class="amount-value">0 so'm</span>
+  <!-- PAYMENT CONFIRMATION DIALOG -->
+  <div id="paymentConfirmDialog" class="modal-overlay" style="display: none;">
+    <div class="modal-box confirm-dialog">
+      <div class="confirm-icon">💳</div>
+      <div class="confirm-title">To'lovni amalga oshirdingizmi?</div>
+      <div class="confirm-amount" id="confirmAmount">0 so'm</div>
+      <div class="confirm-text">
+        Agar to'lov muvaffaqiyatli bo'lgan bo'lsa, skrinshot yuklang
       </div>
-
-      <div id="paymentForm">
-        <div class="payment-info">
-          📱 Telefon raqamingizni tasdiqlang
-        </div>
-        
-        <div class="input-group">
-          <input id="paymentPhone" type="tel" required maxlength="9" placeholder="901234567"/>
-          <label>Telefon raqam (+998)</label>
-        </div>
-
-        <button id="confirmPaymentBtn" class="prof-btn">
-          <span id="btnText">Davom etish</span>
-          <span id="btnLoader" class="loader" style="display:none;"></span>
+      
+      <div class="confirm-buttons">
+        <button class="btn-yes" id="btnYesConfirm">
+          ✅ Ha, to'lov qildim
+        </button>
+        <button class="btn-no" onclick="cancelPayment()">
+          ❌ Yo'q, bekor qilish
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- SCREENSHOT UPLOAD MODAL -->
+  <div id="screenshotModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box screenshot-modal">
+      <div class="modal-title">📸 To'lov skrinshotini yuklang</div>
+      
+      <div class="screenshot-icon">📱</div>
+      
+      <div class="screenshot-instructions">
+        <p>1. Payme dan to'lov skrinshotini oling</p>
+        <p>2. Pastdagi tugmani bosib yuklang</p>
+        <p>3. Admin tekshirgach buyurtma qabul qilinadi</p>
+      </div>
+      
+      <div class="screenshot-upload-area" id="screenshotUploadArea">
+        <input type="file" id="screenshotInput" accept="image/*" style="display:none;">
+        <div class="upload-placeholder" onclick="document.getElementById('screenshotInput').click()">
+          <div class="upload-icon">📷</div>
+          <div class="upload-text">Skrinshot tanlash</div>
+          <div class="upload-hint">yoki bu yerga tashlang</div>
+        </div>
+        <div class="upload-preview" id="uploadPreview" style="display:none;">
+          <img id="previewImage" src="" alt="Preview">
+          <button class="change-image" onclick="document.getElementById('screenshotInput').click()">🔄 O'zgartirish</button>
+        </div>
+      </div>
+      
+      <div class="order-summary">
+        <div class="summary-row">
+          <span>Buyurtma:</span>
+          <span id="summaryOrderId">#-----</span>
+        </div>
+      </div>
+      
+      <button class="btn-submit-order" id="submitOrderBtn" onclick="submitOrderWithScreenshot()" disabled>
+        📤 Buyurtma yuborish
+      </button>
+      
+      <button class="btn-cancel-order" onclick="cancelScreenshot()">Bekor qilish</button>
     </div>
   </div>
 
