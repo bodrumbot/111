@@ -123,13 +123,17 @@ async function loadUserProfile() {
     }
     
     const result = await response.json();
-    console.log('✅ Profil ma\'lumotlari:', result);
+    console.log('✅ Backend dan javob:', result);
     
-    if (result.success) {
+    // ⭐ TO'G'RI TEKSHIRISH - result.success va result.profile
+    if (result.success && result.profile) {
       userProfile = result.profile;
       userOrders = result.orders || [];
       
-      if (userProfile && userProfile.phone) {
+      console.log('👤 Profil:', userProfile);
+      console.log('📦 Buyurtmalar soni:', userOrders.length);
+      
+      if (userProfile.phone) {
         // Profil mavjud - ko'rsatish
         renderProfile();
         renderOrdersList(userOrders);
@@ -138,6 +142,7 @@ async function loadUserProfile() {
         showProfileNotFound();
       }
     } else {
+      console.log('❌ Profil topilmadi:', result);
       showProfileNotFound();
     }
     
@@ -148,32 +153,43 @@ async function loadUserProfile() {
 }
 
 function renderProfile() {
-  if (!userProfile) return;
+  if (!userProfile) {
+    console.log('❌ renderProfile: userProfile null');
+    return;
+  }
   
+  // ⭐ MA'LUMOTLARNI TO'G'RI OLIB CHIQISH
   const name = userProfile.name || 'Foydalanuvchi';
   const phone = userProfile.phone || '';
   
+  console.log('🎨 Profil renderlanmoqda:', { name, phone });
+  
   // Asosiy profil kartasi
-  profileAvatar.textContent = getInitials(name);
-  profileName.textContent = name;
-  profilePhone.textContent = formatPhone(phone);
-  profileSource.textContent = '🤖 Telegram orqali';
+  if (profileAvatar) profileAvatar.textContent = getInitials(name);
+  if (profileName) profileName.textContent = name;
+  if (profilePhone) profilePhone.textContent = formatPhone(phone);
+  if (profileSource) profileSource.textContent = '🤖 Telegram orqali';
   
   // Ma'lumotlar ko'rsatish qismi
-  displayName.textContent = name;
-  displayPhone.textContent = formatPhone(phone);
+  if (displayName) displayName.textContent = name;
+  if (displayPhone) displayPhone.textContent = formatPhone(phone);
   
   // Statistikani hisoblash
   updateProfileStats();
 }
 
 function updateProfileStats() {
-  if (!userOrders) return;
+  if (!userOrders) {
+    console.log('⚠️ updateProfileStats: userOrders null');
+    return;
+  }
   
   const totalOrders = userOrders.length;
   const totalSpent = userOrders.reduce((sum, o) => sum + (o.total || 0), 0);
   
-  // DOM elementlarni yangilash
+  console.log('📊 Statistika:', { totalOrders, totalSpent });
+  
+  // DOM elementlarni yangilash (null tekshiruvi bilan)
   const totalOrdersEl = document.getElementById('totalOrders');
   const totalSpentEl = document.getElementById('totalSpent');
   const ordersCountBadgeEl = document.getElementById('ordersCountBadge');
@@ -192,13 +208,15 @@ function updateProfileStats() {
 }
 
 function showProfileNotFound() {
-  profileAvatar.textContent = '❓';
-  profileName.textContent = 'Profil topilmadi';
-  profilePhone.textContent = 'Botga /start bosing';
-  profileSource.textContent = '⚠️ Ma\'lumot yo\'q';
+  console.log('⚠️ Profil topilmadi, default ko\'rsatilmoqda');
   
-  displayName.textContent = '---';
-  displayPhone.textContent = '---';
+  if (profileAvatar) profileAvatar.textContent = '❓';
+  if (profileName) profileName.textContent = 'Profil topilmadi';
+  if (profilePhone) profilePhone.textContent = 'Botga /start bosing';
+  if (profileSource) profileSource.textContent = '⚠️ Ma\'lumot yo\'q';
+  
+  if (displayName) displayName.textContent = '---';
+  if (displayPhone) displayPhone.textContent = '---';
   
   // Ma'lumot yo'q xabari
   const infoNote = document.querySelector('.info-note');
@@ -222,7 +240,10 @@ function showProfileNotFound() {
 
 function renderOrdersList(orders) {
   const container = document.getElementById('ordersList');
-  if (!container) return;
+  if (!container) {
+    console.log('❌ ordersList container topilmadi');
+    return;
+  }
   
   if (!orders || orders.length === 0) {
     container.innerHTML = `
@@ -235,11 +256,14 @@ function renderOrdersList(orders) {
     return;
   }
   
+  console.log('📋 Buyurtmalar renderlanmoqda:', orders.length);
+  
   container.innerHTML = orders.slice(0, 10).map(order => {
     const date = new Date(order.created_at || order.createdAt);
     const items = order.items || [];
     let itemsText = '';
     
+    // ⭐ ITEMS ni to'g'ri parse qilish
     if (typeof items === 'string') {
       try {
         const parsed = JSON.parse(items);
@@ -269,11 +293,12 @@ function renderOrdersList(orders) {
     }
     
     const hasScreenshot = order.screenshot || order.screenshot_name;
+    const orderId = order.order_id || order.orderId || '-----';
     
     return `
       <div class="order-history-card">
         <div class="order-history-header">
-          <span class="order-history-id">${hasScreenshot ? '📸 ' : ''}#${(order.order_id || order.orderId || '-----').slice(-6)}</span>
+          <span class="order-history-id">${hasScreenshot ? '📸 ' : ''}#${orderId.slice(-6)}</span>
           <span class="order-history-date">${date.toLocaleDateString('uz-UZ')}</span>
         </div>
         <div class="order-history-items">${itemsText}</div>
