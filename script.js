@@ -1,5 +1,5 @@
 // ==========================================
-// BODRUM - Telegram orqali avtomatik profil (TO'G'RILANGAN)
+// BODRUM - Web App ichida kontakt so'rash
 // ==========================================
 
 import { getMenuFromLocal, categories } from './menu.js';
@@ -95,41 +95,129 @@ function showNotification(message, type = 'info') {
 }
 
 // ==========================================
-// PROFILE - Telegram dan olish (TO'G'RILANGAN)
+// PROFILE - Web App ichida kontakt so'rash
 // ==========================================
 
-async function loadUserProfile() {
+// ⭐ YANGI: Kontakt so'rash funksiyasi
+function requestContact() {
+  console.log('📱 Kontakt so\'ralmoqda...');
+  
+  if (!tg) {
+    showNotification('Telegram WebApp topilmadi', 'error');
+    return;
+  }
+  
+  // Telegram WebApp kontakt so'rash
+  tg.requestContact((result) => {
+    console.log('📱 Kontakt natija:', result);
+    
+    if (result) {
+      // Kontakt muvaffaqiyatli olindi
+      const contact = tg.initDataUnsafe?.contact;
+      
+      if (contact) {
+        console.log('✅ Kontakt olindi:', contact);
+        handleContactReceived(contact);
+      } else {
+        // initDataUnsafe.contact bo'lmasa, phone ni olish
+        // Biroq Telegram faqat phone number ni beradi, boshqa ma'lumot yo'q
+        showNotification('Kontakt olindi, ma\'lumotlar yuklanmoqda...', 'success');
+        
+        // Backend dan yangilangan profilni olish
+        setTimeout(() => loadUserProfile(), 1000);
+      }
+    } else {
+      // Foydalanuvchi rad etdi
+      console.log('❌ Kontakt rad etildi');
+      showNotification('Kontakt raqami kerak. Iltimos, ruxsat bering.', 'warning');
+    }
+  });
+}
+
+// ⭐ YANGI: Kontakt qabul qilinganda
+async function handleContactReceived(contact) {
+  console.log('📱 Kontakt qabul qilindi:', contact);
+  
   try {
-    // 1. Telegram ID olish - BATAFSIL TEKSHIRISH
+    // Telefon raqamini formatlash
+    let phone = contact.phone_number || '';
+    
+    // + belgisi bilan boshlansa, olib tashlaymiz
+    if (phone.startsWith('+')) {
+      phone = phone.substring(1);
+    }
+    
+    // 998 bilan boshlansa, olib tashlaymiz
+    if (phone.startsWith('998')) {
+      phone = phone.substring(3);
+    }
+    
+    // Faqat 9 ta raqam qoldiriladi
+    phone = phone.slice(-9);
+    
     const tgUser = tg?.initDataUnsafe?.user;
     const tgId = tgUser?.id;
     
-    console.log('🔍 Telegram WebApp data:', tg?.initDataUnsafe);
-    console.log('🔍 Telegram user:', tgUser);
-    console.log('🔍 tgId:', tgId, 'type:', typeof tgId);
+    if (!tgId) {
+      showNotification('Xatolik: Telegram ID topilmadi', 'error');
+      return;
+    }
+    
+    // Backend ga saqlash
+    const response = await fetch(`${SERVER_URL}/api/user/save-profile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tgId: tgId.toString(),
+        name: contact.first_name || contact.name || tgUser?.first_name || 'Foydalanuvchi',
+        phone: phone,
+        username: tgUser?.username || ''
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Server xatosi: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('✅ Profil saqlandi:', result);
+    
+    if (result.success) {
+      showNotification('✅ Ma\'lumotlar saqlandi!', 'success');
+      
+      // Profilni yangilash
+      userProfile = result.profile;
+      userOrders = result.orders || [];
+      renderProfile();
+      renderOrdersList(userOrders);
+    } else {
+      throw new Error(result.error || 'Saqlash xatosi');
+    }
+    
+  } catch (error) {
+    console.error('❌ Kontakt saqlash xatosi:', error);
+    showNotification('Xatolik: ' + error.message, 'error');
+  }
+}
+
+// Profil yuklash
+async function loadUserProfile() {
+  try {
+    const tgUser = tg?.initDataUnsafe?.user;
+    const tgId = tgUser?.id;
+    
+    console.log('🔍 Profil yuklanmoqda, tgId:', tgId);
     
     if (!tgId) {
       console.log('⚠️ Telegram ID topilmadi');
       showProfileNotFound();
-      
-      // Debug: Telegram WebApp ishlayotganini tekshirish
-      if (!window.Telegram) {
-        console.error('❌ Telegram object yo\'q');
-      } else if (!window.Telegram.WebApp) {
-        console.error('❌ WebApp yo\'q');
-      } else if (!window.Telegram.WebApp.initDataUnsafe?.user) {
-        console.error('❌ User ma\'lumotlari yo\'q');
-      }
       return;
     }
     
-    console.log('🔍 Profil yuklanmoqda, tgId:', tgId);
-    
-    // 2. Backend dan profil va buyurtmalarni olish
     const response = await fetch(`${SERVER_URL}/api/user/profile`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tgId: tgId.toString() }) // ⭐ String sifatida yuborish
+      body: JSON.stringify({ tgId: tgId.toString() })
     });
     
     console.log('📡 Response status:', response.status);
@@ -148,20 +236,49 @@ async function loadUserProfile() {
       userOrders = result.orders || [];
       
       console.log('👤 Profil yuklandi:', userProfile.name);
-      console.log('📦 Buyurtmalar soni:', userOrders.length);
       
       renderProfile();
       renderOrdersList(userOrders);
     } else {
-      console.log('❌ Profil topilmadi:', result);
+      console.log('❌ Profil topilmadi, kontakt so\'rash kerak');
       showProfileNotFound();
+      // ⭐ Profil topilmasa, kontakt so'rash taklifi
+      showContactRequestModal();
     }
     
   } catch (error) {
     console.error('❌ Profil yuklash xatosi:', error);
     showProfileNotFound();
+    showContactRequestModal();
   }
 }
+
+// ⭐ YANGI: Kontakt so'rash modalini ko'rsatish
+function showContactRequestModal() {
+  // Agar allaqachon modal ochiq bo'lsa, qayta ochmaymiz
+  if (document.getElementById('contactRequestModal')?.classList.contains('show')) {
+    return;
+  }
+  
+  const modal = document.getElementById('contactRequestModal');
+  if (modal) {
+    modal.classList.add('show');
+  }
+}
+
+// ⭐ YANGI: Kontakt so'rash modalini yopish
+window.closeContactRequestModal = function() {
+  const modal = document.getElementById('contactRequestModal');
+  if (modal) {
+    modal.classList.remove('show');
+  }
+};
+
+// ⭐ YANGI: Kontakt so'rash tugmasi
+window.requestContactFromModal = function() {
+  closeContactRequestModal();
+  requestContact();
+};
 
 function renderProfile() {
   if (!userProfile) {
@@ -169,24 +286,25 @@ function renderProfile() {
     return;
   }
   
-  // ⭐ MA'LUMOTLARNI TO'G'RI OLIB CHIQISH
   const name = userProfile.name || userProfile.username || 'Foydalanuvchi';
   const phone = userProfile.phone || '';
   
   console.log('🎨 Profil renderlanmoqda:', { name, phone });
   
-  // Asosiy profil kartasi
   if (profileAvatar) profileAvatar.textContent = getInitials(name);
   if (profileName) profileName.textContent = name;
   if (profilePhone) profilePhone.textContent = formatPhone(phone);
   if (profileSource) profileSource.textContent = '🤖 Telegram orqali';
   
-  // Ma'lumotlar ko'rsatish qismi
   if (displayName) displayName.textContent = name;
   if (displayPhone) displayPhone.textContent = formatPhone(phone);
   
-  // Statistikani hisoblash
   updateProfileStats();
+  
+  // ⭐ Profil to'liq bo'lsa, kontakt so'rash modalini yopish
+  if (phone && phone.length === 9) {
+    closeContactRequestModal();
+  }
 }
 
 function updateProfileStats() {
@@ -198,9 +316,6 @@ function updateProfileStats() {
   const totalOrders = userOrders.length;
   const totalSpent = userOrders.reduce((sum, o) => sum + (o.total || 0), 0);
   
-  console.log('📊 Statistika:', { totalOrders, totalSpent });
-  
-  // DOM elementlarni yangilash (null tekshiruvi bilan)
   const totalOrdersEl = document.getElementById('totalOrders');
   const totalSpentEl = document.getElementById('totalSpent');
   const ordersCountBadgeEl = document.getElementById('ordersCountBadge');
@@ -223,21 +338,19 @@ function showProfileNotFound() {
   
   if (profileAvatar) profileAvatar.textContent = '❓';
   if (profileName) profileName.textContent = 'Profil topilmadi';
-  if (profilePhone) profilePhone.textContent = 'Botga /start bosing';
+  if (profilePhone) profilePhone.textContent = 'Telefon raqam kerak';
   if (profileSource) profileSource.textContent = '⚠️ Ma\'lumot yo\'q';
   
   if (displayName) displayName.textContent = '---';
   if (displayPhone) displayPhone.textContent = '---';
   
-  // Ma'lumot yo'q xabari
   const infoNote = document.querySelector('.info-note');
   if (infoNote) {
-    infoNote.innerHTML = '<span>⚠️</span><span>Profil topilmadi. Iltimos, botga qaytib /start bosing va telefon raqamingizni yuboring</span>';
+    infoNote.innerHTML = '<span>⚠️</span><span>Profil topilmadi. Iltimos, telefon raqamingizni yuboring</span>';
     infoNote.style.background = 'rgba(255, 71, 87, 0.1)';
     infoNote.style.borderColor = 'rgba(255, 71, 87, 0.3)';
   }
   
-  // Statistika 0
   const totalOrdersEl = document.getElementById('totalOrders');
   const totalSpentEl = document.getElementById('totalSpent');
   const ordersCountBadgeEl = document.getElementById('ordersCountBadge');
@@ -274,7 +387,6 @@ function renderOrdersList(orders) {
     const items = order.items || [];
     let itemsText = '';
     
-    // ⭐ ITEMS ni to'g'ri parse qilish
     if (typeof items === 'string') {
       try {
         const parsed = JSON.parse(items);
@@ -549,7 +661,6 @@ document.querySelectorAll('.tab').forEach(btn => {
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
     
-    // ⭐ Profil tab'ga o'tganda ma'lumotlarni yangilash
     if (btn.dataset.tab === 'profile') {
       loadUserProfile();
     }
@@ -572,10 +683,11 @@ window.switchTab = function(tabName) {
 // ==========================================
 
 function openInstructionModal(total) {
-  // Profil tekshirish
+  // Profil tekshirish - telefon raqami bo'lmasa kontakt so'rash
   if (!userProfile || !userProfile.phone) {
-    showNotification('Iltimos, avval botga /start bosing va telefon raqamingizni yuboring', 'error');
-    setTimeout(() => switchTab('profile'), 1000);
+    showNotification('Iltimos, avval telefon raqamingizni yuboring', 'error');
+    showContactRequestModal();
+    setTimeout(() => switchTab('profile'), 500);
     return;
   }
   
@@ -604,7 +716,6 @@ document.getElementById('understandBtn').addEventListener('click', async () => {
   const orderId = pendingPaymentData.orderId;
   const dataToPass = { ...pendingPaymentData };
   
-  // Serverga yuborish
   try {
     const response = await fetch(`${SERVER_URL}/api/orders/initiated`, {
       method: 'POST',
@@ -663,10 +774,8 @@ function openPaymePayment(data) {
     window.open(paymeUrl, '_blank');
   }
   
-  // BOT GA TASDIQLASH SO'ROVI YUBORISH
   sendBotConfirmationRequest(orderId, total);
   
-  // 3 soniyadan keyin tasdiqlash oynasini ko'rsatish
   setTimeout(() => {
     showPaymentConfirmationDialog(total);
   }, 3000);
@@ -717,10 +826,11 @@ document.getElementById('orderBtn').addEventListener('click', async () => {
     return;
   }
   
-  // Profil tekshirish
+  // Profil tekshirish - telefon raqami bo'lmasa kontakt so'rash
   if (!userProfile || !userProfile.phone) {
-    showNotification('Iltimos, avval botga /start bosing va telefon raqamingizni yuboring', 'error');
-    setTimeout(() => switchTab('profile'), 1000);
+    showNotification('Iltimos, avval telefon raqamingizni yuboring', 'error');
+    showContactRequestModal();
+    setTimeout(() => switchTab('profile'), 500);
     return;
   }
   
@@ -738,7 +848,6 @@ function showPaymentConfirmationDialog(total) {
   modal.style.display = 'flex';
   modal.classList.add('show');
   
-  // Bot dan tasdiqlashni tekshirish
   startBotConfirmationCheck();
 }
 
@@ -747,7 +856,6 @@ window.confirmPaymentFromWebApp = async function() {
   modal.style.display = 'none';
   modal.classList.remove('show');
   
-  // Bot ga xabar yuborish
   const tgId = tg?.initDataUnsafe?.user?.id;
   if (tgId && currentOrderId) {
     try {
@@ -892,7 +1000,6 @@ window.submitOrderWithScreenshot = async function() {
     return;
   }
   
-  // Profil tekshirish
   if (!userProfile || !userProfile.phone) {
     showNotification('Profil ma\'lumotlari topilmadi', 'error');
     return;
@@ -937,7 +1044,6 @@ window.submitOrderWithScreenshot = async function() {
     
     const order = await response.json();
     
-    // ⭐ YANGI BUYURTMANI RO'YXATGA QO'SHISH
     if (order) {
       userOrders.unshift(order);
       updateProfileStats();
@@ -988,7 +1094,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMenu();
     renderCart();
     
-    // ⭐ Sahifa yuklanganda profilni yuklash
+    // Profilni yuklash - agar yo'q bo'lsa kontakt so'raladi
     loadUserProfile();
   } catch (error) {
     console.error('Init xato:', error);
