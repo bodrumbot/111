@@ -1,5 +1,5 @@
 // ==========================================
-// BODRUM - Web App ichida kontakt so'rash
+// BODRUM - Web App
 // ==========================================
 
 import { getMenuFromLocal, categories } from './menu.js';
@@ -95,10 +95,9 @@ function showNotification(message, type = 'info') {
 }
 
 // ==========================================
-// PROFILE - Web App ichida kontakt so'rash
+// PROFILE FUNCTIONS
 // ==========================================
 
-// ⭐ YANGI: Kontakt so'rash funksiyasi
 function requestContact() {
   console.log('📱 Kontakt so\'ralmoqda...');
   
@@ -107,52 +106,40 @@ function requestContact() {
     return;
   }
   
-  // Telegram WebApp kontakt so'rash
   tg.requestContact((result) => {
     console.log('📱 Kontakt natija:', result);
     
     if (result) {
-      // Kontakt muvaffaqiyatli olindi
       const contact = tg.initDataUnsafe?.contact;
       
       if (contact) {
         console.log('✅ Kontakt olindi:', contact);
         handleContactReceived(contact);
       } else {
-        // initDataUnsafe.contact bo'lmasa, phone ni olish
-        // Biroq Telegram faqat phone number ni beradi, boshqa ma'lumot yo'q
         showNotification('Kontakt olindi, ma\'lumotlar yuklanmoqda...', 'success');
-        
-        // Backend dan yangilangan profilni olish
         setTimeout(() => loadUserProfile(), 1000);
       }
     } else {
-      // Foydalanuvchi rad etdi
       console.log('❌ Kontakt rad etildi');
       showNotification('Kontakt raqami kerak. Iltimos, ruxsat bering.', 'warning');
     }
   });
 }
 
-// ⭐ YANGI: Kontakt qabul qilinganda
 async function handleContactReceived(contact) {
   console.log('📱 Kontakt qabul qilindi:', contact);
   
   try {
-    // Telefon raqamini formatlash
     let phone = contact.phone_number || '';
     
-    // + belgisi bilan boshlansa, olib tashlaymiz
     if (phone.startsWith('+')) {
       phone = phone.substring(1);
     }
     
-    // 998 bilan boshlansa, olib tashlaymiz
     if (phone.startsWith('998')) {
       phone = phone.substring(3);
     }
     
-    // Faqat 9 ta raqam qoldiriladi
     phone = phone.slice(-9);
     
     const tgUser = tg?.initDataUnsafe?.user;
@@ -163,7 +150,6 @@ async function handleContactReceived(contact) {
       return;
     }
     
-    // Backend ga saqlash
     const response = await fetch(`${SERVER_URL}/api/user/save-profile`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -184,8 +170,6 @@ async function handleContactReceived(contact) {
     
     if (result.success) {
       showNotification('✅ Ma\'lumotlar saqlandi!', 'success');
-      
-      // Profilni yangilash
       userProfile = result.profile;
       userOrders = result.orders || [];
       renderProfile();
@@ -200,7 +184,6 @@ async function handleContactReceived(contact) {
   }
 }
 
-// Profil yuklash
 async function loadUserProfile() {
   try {
     const tgUser = tg?.initDataUnsafe?.user;
@@ -234,15 +217,12 @@ async function loadUserProfile() {
     if (result.success && result.profile) {
       userProfile = result.profile;
       userOrders = result.orders || [];
-      
       console.log('👤 Profil yuklandi:', userProfile.name);
-      
       renderProfile();
       renderOrdersList(userOrders);
     } else {
       console.log('❌ Profil topilmadi, kontakt so\'rash kerak');
       showProfileNotFound();
-      // ⭐ Profil topilmasa, kontakt so'rash taklifi
       showContactRequestModal();
     }
     
@@ -253,9 +233,7 @@ async function loadUserProfile() {
   }
 }
 
-// ⭐ YANGI: Kontakt so'rash modalini ko'rsatish
 function showContactRequestModal() {
-  // Agar allaqachon modal ochiq bo'lsa, qayta ochmaymiz
   if (document.getElementById('contactRequestModal')?.classList.contains('show')) {
     return;
   }
@@ -266,7 +244,6 @@ function showContactRequestModal() {
   }
 }
 
-// ⭐ YANGI: Kontakt so'rash modalini yopish
 window.closeContactRequestModal = function() {
   const modal = document.getElementById('contactRequestModal');
   if (modal) {
@@ -274,7 +251,6 @@ window.closeContactRequestModal = function() {
   }
 };
 
-// ⭐ YANGI: Kontakt so'rash tugmasi
 window.requestContactFromModal = function() {
   closeContactRequestModal();
   requestContact();
@@ -301,7 +277,6 @@ function renderProfile() {
   
   updateProfileStats();
   
-  // ⭐ Profil to'liq bo'lsa, kontakt so'rash modalini yopish
   if (phone && phone.length === 9) {
     closeContactRequestModal();
   }
@@ -683,7 +658,6 @@ window.switchTab = function(tabName) {
 // ==========================================
 
 function openInstructionModal(total) {
-  // Profil tekshirish - telefon raqami bo'lmasa kontakt so'rash
   if (!userProfile || !userProfile.phone) {
     showNotification('Iltimos, avval telefon raqamingizni yuboring', 'error');
     showContactRequestModal();
@@ -826,7 +800,6 @@ document.getElementById('orderBtn').addEventListener('click', async () => {
     return;
   }
   
-  // Profil tekshirish - telefon raqami bo'lmasa kontakt so'rash
   if (!userProfile || !userProfile.phone) {
     showNotification('Iltimos, avval telefon raqamingizni yuboring', 'error');
     showContactRequestModal();
@@ -839,27 +812,57 @@ document.getElementById('orderBtn').addEventListener('click', async () => {
 });
 
 // ==========================================
-// PAYMENT CONFIRMATION DIALOG
+// PAYMENT CONFIRMATION DIALOG - TO'Liq TO'G'RILANGAN
 // ==========================================
 
 function showPaymentConfirmationDialog(total) {
+  console.log('💬 showPaymentConfirmationDialog chaqirildi, total:', total, 'currentOrderId:', currentOrderId);
+  
   const modal = document.getElementById('paymentConfirmDialog');
-  document.getElementById('confirmAmount').textContent = total.toLocaleString() + ' so\'m';
+  const confirmAmount = document.getElementById('confirmAmount');
+  
+  if (!modal) {
+    console.error('❌ paymentConfirmDialog topilmadi!');
+    return;
+  }
+  
+  if (confirmAmount) {
+    confirmAmount.textContent = total.toLocaleString() + ' so\'m';
+  }
+  
+  // ⭐ MUHIM: display ni to'g'ridan-to'g'ri o'rnatish
   modal.style.display = 'flex';
   modal.classList.add('show');
+  document.body.style.overflow = 'hidden';
   
+  console.log('✅ Payment dialog ko\'rsatildi');
+  
+  // Bot tasdiqlashini tekshirishni boshlash
   startBotConfirmationCheck();
 }
 
+// ⭐⭐⭐ ASOSIY TO'G'RILASH - Bu funksiya "Ha, to'lov qildim" tugmasi bosilganda chaqiriladi
 window.confirmPaymentFromWebApp = async function() {
+  console.log('✅ confirmPaymentFromWebApp chaqirildi, currentOrderId:', currentOrderId);
+  
   const modal = document.getElementById('paymentConfirmDialog');
-  modal.style.display = 'none';
-  modal.classList.remove('show');
+  
+  // Modalni yopish
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.remove('show');
+  }
+  
+  // Bot tasdiqlash tekshiruvini to'xtatish
+  stopBotConfirmationCheck();
   
   const tgId = tg?.initDataUnsafe?.user?.id;
+  
+  // Backend ga xabar yuborish (ixtiyoriy)
   if (tgId && currentOrderId) {
     try {
-      await fetch(`${SERVER_URL}/api/confirm-payment`, {
+      console.log('📤 confirm-payment API ga so\'rov yuborilmoqda...');
+      const response = await fetch(`${SERVER_URL}/api/confirm-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -867,18 +870,30 @@ window.confirmPaymentFromWebApp = async function() {
           tgId: tgId
         })
       });
+      
+      if (response.ok) {
+        console.log('✅ confirm-payment muvaffaqiyatli');
+      } else {
+        console.warn('⚠️ confirm-payment xato:', response.status);
+      }
     } catch (e) {
-      console.error('Confirm payment error:', e);
+      console.error('❌ Confirm payment error:', e);
     }
   }
   
-  proceedToScreenshot();
+  // ⭐⭐⭐ MUHIM: To'g'ridan-to'g'ri screenshot modalini ochish
+  console.log('📸 Screenshot modaliga o\'tish...');
+  openScreenshotModal();
 };
 
 window.cancelPayment = function() {
+  console.log('❌ cancelPayment chaqirildi');
+  
   const modal = document.getElementById('paymentConfirmDialog');
-  modal.style.display = 'none';
-  modal.classList.remove('show');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.remove('show');
+  }
   
   stopBotConfirmationCheck();
   
@@ -891,8 +906,11 @@ function startBotConfirmationCheck() {
     clearInterval(botConfirmationCheckInterval);
   }
   
+  console.log('🔄 Bot tasdiqlash tekshiruvi boshlandi');
+  
   botConfirmationCheckInterval = setInterval(async () => {
     if (!currentOrderId) {
+      console.log('⚠️ currentOrderId yo\'q, tekshiruv to\'xtatildi');
       stopBotConfirmationCheck();
       return;
     }
@@ -908,24 +926,28 @@ function startBotConfirmationCheck() {
       
       if (response.ok) {
         const result = await response.json();
+        console.log('🔍 Bot tasdiqlash natijasi:', result);
         
         if (result.bot_confirmed) {
           console.log('✅ Bot dan tasdiqlandi!');
           stopBotConfirmationCheck();
           
           const modal = document.getElementById('paymentConfirmDialog');
-          modal.style.display = 'none';
-          modal.classList.remove('show');
+          if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('show');
+          }
           
           showNotification('Bot dan tasdiqlandi! Skrinshot yuklang', 'success');
-          proceedToScreenshot();
+          openScreenshotModal();
         }
       }
     } catch (error) {
-      console.error('Bot confirmation check error:', error);
+      console.error('❌ Bot confirmation check error:', error);
     }
   }, 2000);
   
+  // 60 sekunddan keyin tekshiruvni to'xtatish
   setTimeout(() => {
     stopBotConfirmationCheck();
   }, 60000);
@@ -935,18 +957,63 @@ function stopBotConfirmationCheck() {
   if (botConfirmationCheckInterval) {
     clearInterval(botConfirmationCheckInterval);
     botConfirmationCheckInterval = null;
+    console.log('🛑 Bot tasdiqlash tekshiruvi to\'xtatildi');
   }
 }
 
 // ==========================================
-// SCREENSHOT UPLOAD
+// SCREENSHOT UPLOAD - TO'LIQ TO'G'RILANGAN
 // ==========================================
 
-window.proceedToScreenshot = function() {
+// ⭐⭐⭐ YANGI FUNKS: Screenshot modalini ochish
+window.openScreenshotModal = function() {
+  console.log('📸 openScreenshotModal chaqirildi, currentOrderId:', currentOrderId);
+  
   const modal = document.getElementById('screenshotModal');
-  document.getElementById('summaryOrderId').textContent = '#' + (currentOrderId?.slice(-6) || '-----');
+  const summaryOrderId = document.getElementById('summaryOrderId');
+  
+  if (!modal) {
+    console.error('❌ screenshotModal topilmadi!');
+    showNotification('Xatolik: Modal topilmadi', 'error');
+    return;
+  }
+  
+  // Order ID ni yangilash
+  if (summaryOrderId) {
+    summaryOrderId.textContent = '#' + (currentOrderId?.slice(-6) || '-----');
+  }
+  
+  // Skrinshot inputni tozalash
+  selectedScreenshot = null;
+  const fileInput = document.getElementById('screenshotInput');
+  if (fileInput) fileInput.value = '';
+  
+  // Preview ni yashirish, placeholder ni ko'rsatish
+  const preview = document.getElementById('uploadPreview');
+  const placeholder = document.querySelector('.upload-placeholder');
+  if (preview) preview.style.display = 'none';
+  if (placeholder) placeholder.style.display = 'flex';
+  
+  // Upload area klassini yangilash
+  const uploadArea = document.getElementById('screenshotUploadArea');
+  if (uploadArea) uploadArea.classList.remove('has-image');
+  
+  // Tugmani disable qilish
+  const submitBtn = document.getElementById('submitOrderBtn');
+  if (submitBtn) submitBtn.disabled = true;
+  
+  // ⭐ MUHIM: Modalni ko'rsatish
   modal.style.display = 'flex';
   modal.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  
+  console.log('✅ Screenshot modal ochildi');
+};
+
+// Eski funksiya - endi yangisini chaqiradi
+window.proceedToScreenshot = function() {
+  console.log('📸 proceedToScreenshot chaqirildi (deprecated, openScreenshotModal ga yo\'naltirildi)');
+  openScreenshotModal();
 };
 
 function handleScreenshotSelect(e) {
@@ -970,24 +1037,33 @@ function handleScreenshotSelect(e) {
     const preview = document.getElementById('uploadPreview');
     const placeholder = document.querySelector('.upload-placeholder');
     const previewImg = document.getElementById('previewImage');
+    const uploadArea = document.getElementById('screenshotUploadArea');
+    const submitBtn = document.getElementById('submitOrderBtn');
     
-    previewImg.src = e.target.result;
-    preview.style.display = 'block';
-    placeholder.style.display = 'none';
+    if (previewImg) previewImg.src = e.target.result;
+    if (preview) preview.style.display = 'block';
+    if (placeholder) placeholder.style.display = 'none';
+    if (uploadArea) uploadArea.classList.add('has-image');
+    if (submitBtn) submitBtn.disabled = false;
     
-    document.querySelector('.screenshot-upload-area').classList.add('has-image');
-    document.getElementById('submitOrderBtn').disabled = false;
+    console.log('✅ Skrinshot tanlandi:', file.name);
   };
   reader.readAsDataURL(file);
 }
 
 window.cancelScreenshot = function() {
+  console.log('❌ cancelScreenshot chaqirildi');
+  
   const modal = document.getElementById('screenshotModal');
-  modal.style.display = 'none';
-  modal.classList.remove('show');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.remove('show');
+  }
+  
   selectedScreenshot = null;
   currentOrderId = null;
   pendingPaymentData = null;
+  document.body.style.overflow = '';
 };
 
 // ==========================================
@@ -995,6 +1071,8 @@ window.cancelScreenshot = function() {
 // ==========================================
 
 window.submitOrderWithScreenshot = async function() {
+  console.log('📤 submitOrderWithScreenshot chaqirildi');
+  
   if (!selectedScreenshot || !currentOrderId) {
     showNotification('Iltimos, skrinshot tanlang', 'error');
     return;
@@ -1006,8 +1084,10 @@ window.submitOrderWithScreenshot = async function() {
   }
   
   const btn = document.getElementById('submitOrderBtn');
-  btn.disabled = true;
-  btn.textContent = 'Yuborilmoqda...';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Yuborilmoqda...';
+  }
   
   try {
     const base64Screenshot = await fileToBase64(selectedScreenshot);
@@ -1034,6 +1114,8 @@ window.submitOrderWithScreenshot = async function() {
       initiated_from: 'webapp'
     };
     
+    console.log('📤 Buyurtma yuborilmoqda:', orderData.orderId);
+    
     const response = await fetch(`${SERVER_URL}/api/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1043,6 +1125,7 @@ window.submitOrderWithScreenshot = async function() {
     if (!response.ok) throw new Error('Server error');
     
     const order = await response.json();
+    console.log('✅ Buyurtma yuborildi:', order);
     
     if (order) {
       userOrders.unshift(order);
@@ -1051,14 +1134,17 @@ window.submitOrderWithScreenshot = async function() {
     }
     
     const modal = document.getElementById('screenshotModal');
-    modal.style.display = 'none';
-    modal.classList.remove('show');
+    if (modal) {
+      modal.style.display = 'none';
+      modal.classList.remove('show');
+    }
     
     cart = [];
     saveCartLS();
     renderCart();
     selectedScreenshot = null;
     pendingPaymentData = null;
+    currentOrderId = null;
     
     showNotification('✅ Buyurtma yuborildi! Admin tekshiradi.', 'success');
     
@@ -1067,8 +1153,10 @@ window.submitOrderWithScreenshot = async function() {
   } catch (error) {
     console.error('❌ Submit error:', error);
     showNotification('Xatolik: ' + error.message, 'error');
-    btn.disabled = false;
-    btn.textContent = '📤 Buyurtma yuborish';
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '📤 Buyurtma yuborish';
+    }
   }
 };
 
@@ -1093,8 +1181,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCategories();
     renderMenu();
     renderCart();
-    
-    // Profilni yuklash - agar yo'q bo'lsa kontakt so'raladi
     loadUserProfile();
   } catch (error) {
     console.error('Init xato:', error);
@@ -1105,6 +1191,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileInput = document.getElementById('screenshotInput');
     if (fileInput) {
       fileInput.addEventListener('change', handleScreenshotSelect);
+      console.log('✅ Screenshot input event listener qo\'shildi');
+    } else {
+      console.error('❌ screenshotInput topilmadi');
     }
   }, 100);
 });
