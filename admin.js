@@ -56,13 +56,9 @@ function stopPolling() {
 
 async function checkNewOrders() {
   try {
-    // Yangi buyurtmalarni tekshirish (faqat notification uchun)
+    // Faqat yangi buyurtmalarni tekshirish (notification uchun)
     const response = await fetch(`${SERVER_URL}/api/orders/new`);
     const newOrders = await response.json();
-    
-    // Yangi buyurtmalar sonini badge da ko'rsatish (faqat notification)
-    const newCount = newOrders.length;
-    updateNewOrdersBadge(newCount);
     
     // Agar yangi buyurtma bo'lsa, notification ko'rsatish
     newOrders.forEach(order => {
@@ -102,29 +98,14 @@ async function loadOrders() {
     loadCustomers();
     updateStats();
     
-    // Yangi buyurtmalar sonini alohida olish (faqat badge uchun)
-    const newResponse = await fetch(`${SERVER_URL}/api/orders/new`);
-    const newOrders = await newResponse.json();
-    updateNewOrdersBadge(newOrders.length);
-    
   } catch (error) {
     console.error('❌ Buyurtmalarni yuklash xatosi:', error);
   }
 }
 
+// Badge funksiyasi olib tashlandi
 function updateNewOrdersBadge(count) {
-  document.getElementById('newOrdersCount').textContent = count;
-  document.getElementById('ordersNavBadge').textContent = count;
-  
-  if (window.Telegram?.WebApp?.MainButton) {
-    const tg = window.Telegram.WebApp;
-    if (count > 0) {
-      tg.MainButton.setText(`🛎️ ${count} yangi`);
-      tg.MainButton.show();
-    } else {
-      tg.MainButton.hide();
-    }
-  }
+  // Hech narsa qilmaydi - badge olib tashlandi
 }
 
 // ==========================================
@@ -140,17 +121,6 @@ function renderOrders() {
 }
 
 function renderAcceptedOrders(container) {
-  // Bugungi daromad
-  const today = new Date().toDateString();
-  const todayRev = orders
-    .filter(o => {
-      const isToday = new Date(o.acceptedAt || o.accepted_at || o.createdAt || o.created_at).toDateString() === today;
-      return isToday;
-    })
-    .reduce((sum, o) => sum + (o.total || 0), 0);
-  
-  document.getElementById('todayRevenue').textContent = (todayRev / 1000).toFixed(0) + 'k';
-  
   if (orders.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
