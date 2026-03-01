@@ -100,12 +100,26 @@ function showNotification(message, type = 'info') {
 
 async function loadUserProfile() {
   try {
-    // 1. Telegram ID olish
-    const tgId = tg?.initDataUnsafe?.user?.id;
+    // 1. Telegram ID olish - BATAFSIL TEKSHIRISH
+    const tgUser = tg?.initDataUnsafe?.user;
+    const tgId = tgUser?.id;
+    
+    console.log('🔍 Telegram WebApp data:', tg?.initDataUnsafe);
+    console.log('🔍 Telegram user:', tgUser);
+    console.log('🔍 tgId:', tgId, 'type:', typeof tgId);
     
     if (!tgId) {
       console.log('⚠️ Telegram ID topilmadi');
       showProfileNotFound();
+      
+      // Debug: Telegram WebApp ishlayotganini tekshirish
+      if (!window.Telegram) {
+        console.error('❌ Telegram object yo\'q');
+      } else if (!window.Telegram.WebApp) {
+        console.error('❌ WebApp yo\'q');
+      } else if (!window.Telegram.WebApp.initDataUnsafe?.user) {
+        console.error('❌ User ma\'lumotlari yo\'q');
+      }
       return;
     }
     
@@ -115,32 +129,29 @@ async function loadUserProfile() {
     const response = await fetch(`${SERVER_URL}/api/user/profile`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tgId: tgId })
+      body: JSON.stringify({ tgId: tgId.toString() }) // ⭐ String sifatida yuborish
     });
     
+    console.log('📡 Response status:', response.status);
+    
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      const errorText = await response.text();
+      console.error('❌ Server xatosi:', response.status, errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
     
     const result = await response.json();
     console.log('✅ Backend dan javob:', result);
     
-    // ⭐ TO'G'RI TEKSHIRISH - result.success va result.profile
     if (result.success && result.profile) {
       userProfile = result.profile;
       userOrders = result.orders || [];
       
-      console.log('👤 Profil:', userProfile);
+      console.log('👤 Profil yuklandi:', userProfile.name);
       console.log('📦 Buyurtmalar soni:', userOrders.length);
       
-      if (userProfile.phone) {
-        // Profil mavjud - ko'rsatish
-        renderProfile();
-        renderOrdersList(userOrders);
-      } else {
-        // Profil topilmadi
-        showProfileNotFound();
-      }
+      renderProfile();
+      renderOrdersList(userOrders);
     } else {
       console.log('❌ Profil topilmadi:', result);
       showProfileNotFound();
@@ -159,7 +170,7 @@ function renderProfile() {
   }
   
   // ⭐ MA'LUMOTLARNI TO'G'RI OLIB CHIQISH
-  const name = userProfile.name || 'Foydalanuvchi';
+  const name = userProfile.name || userProfile.username || 'Foydalanuvchi';
   const phone = userProfile.phone || '';
   
   console.log('🎨 Profil renderlanmoqda:', { name, phone });
