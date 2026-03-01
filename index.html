@@ -52,7 +52,6 @@
           <div class="profile-phone" id="profilePhone">+998 __ _______</div>
           <div class="profile-source" id="profileSource">🤖 Telegram orqali</div>
           
-          <!-- ⭐ YANGI: Telefon raqamini yangilash tugmasi -->
           <button class="update-phone-btn" id="updatePhoneBtn" onclick="requestContact()" style="display: none;">
             📱 Telefon raqamini yangilash
           </button>
@@ -77,7 +76,6 @@
         </div>
       </div>
 
-      <!-- Ma'lumotlar kartasi -->
       <div class="info-card read-only">
         <div class="info-card-header">
           <div class="info-card-icon">👤</div>
@@ -114,7 +112,7 @@
     </div>
   </section>
 
-  <!-- ⭐ YANGI: KONTAKT SO'RASH MODALI -->
+  <!-- KONTAKT SO'RASH MODALI -->
   <div id="contactRequestModal" class="modal-overlay">
     <div class="modal-box contact-request-modal">
       <div class="contact-icon">📱</div>
@@ -250,7 +248,7 @@
       </div>
       
       <div class="confirm-buttons">
-        <button class="btn-yes" id="btnYesConfirm">
+        <button class="btn-yes" id="btnYesConfirm" onclick="confirmPaymentFromWebApp()">
           ✅ Ha, to'lov qildim
         </button>
         <button class="btn-no" onclick="cancelPayment()">
