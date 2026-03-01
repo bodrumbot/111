@@ -1403,6 +1403,115 @@ main {
   font-weight: 600;
 }
 
+
+/* ==========================================
+   KONTAKT SO'RASH MODALI
+   ========================================== */
+
+.contact-request-modal {
+  max-width: 400px;
+  text-align: center;
+  padding: 32px 24px;
+}
+
+.contact-icon {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00D084 0%, #00b06b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 45px;
+  margin: 0 auto 24px;
+  animation: pulse 2s infinite;
+  box-shadow: 0 8px 32px rgba(0, 208, 132, 0.3);
+}
+
+.contact-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.contact-text {
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.contact-benefits {
+  background: rgba(212, 175, 55, 0.05);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(212, 175, 55, 0.1);
+}
+
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.benefit-item:last-child {
+  margin-bottom: 0;
+}
+
+.benefit-icon {
+  color: var(--success);
+  font-size: 16px;
+}
+
+.btn-request-contact {
+  width: 100%;
+  padding: 18px;
+  border-radius: 16px;
+  border: none;
+  background: linear-gradient(135deg, #00D084 0%, #00b06b 100%);
+  color: #000;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  margin-bottom: 12px;
+  box-shadow: 0 6px 20px rgba(0, 208, 132, 0.3);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-request-contact:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 208, 132, 0.4);
+}
+
+.btn-cancel-contact {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-cancel-contact:hover {
+  border-color: var(--text-secondary);
+  color: var(--text);
+}
+
+
+
 /* Info Cards */
 .info-card {
   background: linear-gradient(145deg, var(--surface) 0%, var(--surface-light) 100%);
@@ -2869,4 +2978,32 @@ main {
 
 .float-effect {
   animation: float 3s ease-in-out infinite;
+}
+
+
+
+/* ==========================================
+   TELEFON YANGILASH TUGMASI
+   ========================================== */
+
+.update-phone-btn {
+  margin-top: 16px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: 2px solid var(--gold-primary);
+  background: transparent;
+  color: var(--gold-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.update-phone-btn:hover {
+  background: var(--gold-primary);
+  color: #000;
+  transform: translateY(-2px);
 }
