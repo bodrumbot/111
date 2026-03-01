@@ -92,6 +92,18 @@ body {
   50% { opacity: 0.6; transform: scale(1.2); }
 }
 
+.orders-header-simple {
+  margin: 20px 0;
+}
+
+.orders-header-simple h3 {
+  color: var(--gold-primary);
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+
 /* Main Content */
 .mobile-content {
   padding: 20px 16px;
