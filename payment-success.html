@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>To'lov - BODRUM</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --gold-primary: #FFD700;
+      --gold-light: #FFE55C;
+      --gold-dark: #D4AF37;
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --surface-light: #1f1f1f;
+      --success: #00D084;
+      --warning: #FFA502;
+      --danger: #FF4757;
+      --text: #FFFFFF;
+      --text-secondary: #A0A0A0;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    
+    .icon-wrapper {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold-primary), var(--gold-dark));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 32px;
+      animation: pulse 2s infinite;
+      box-shadow: 0 8px 32px rgba(212, 175, 55, 0.3);
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 8px 32px rgba(212, 175, 55, 0.3); }
+      50% { transform: scale(1.05); box-shadow: 0 12px 40px rgba(212, 175, 55, 0.5); }
+    }
+    
+    .icon {
+      font-size: 60px;
+    }
+    
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, var(--gold-primary), var(--gold-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .subtitle {
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+      font-size: 16px;
+    }
+    
+    .status-card {
+      background: linear-gradient(145deg, var(--surface), var(--surface-light));
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 24px;
+      border: 1px solid rgba(212, 175, 55, 0.15);
+    }
+    
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+    }
+    
+    .status-row:last-child {
+      border-bottom: none;
+    }
+    
+    .status-label {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    
+    .status-value {
+      font-weight: 700;
+      font-size: 14px;
+    }
+    
+    .status-value.order-id {
+      color: var(--gold-primary);
+      font-family: monospace;
+    }
+    
+    .status-value.price {
+      color: var(--gold-primary);
+      font-size: 20px;
+    }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    
+    .status-badge.pending {
+      background: rgba(255, 165, 2, 0.15);
+      color: var(--warning);
+    }
+    
+    .status-badge.success {
+      background: rgba(0, 208, 132, 0.15);
+      color: var(--success);
+    }
+    
+    .status-badge.error {
+      background: rgba(255, 71, 87, 0.15);
+      color: var(--danger);
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 18px;
+      border-radius: 16px;
+      border: none;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-transform: uppercase;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gold-primary), var(--gold-dark));
+      color: #000;
+      margin-bottom: 12px;
+      box-shadow: 0 6px 20px rgba(212, 175, 55, 0.3);
+    }
+    
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+    
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 2px solid rgba(212, 175, 55, 0.3);
+    }
+    
+    .loader {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(0,0,0,0.3);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+    
+    .hidden { display: none !important; }
+    
+    .auto-redirect {
+      margin-top: 20px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon-wrapper">
+      <div class="icon" id="mainIcon">💳</div>
+    </div>
+    
+    <h1 id="title">To'lov tekshirilmoqda...</h1>
+    <p class="subtitle" id="subtitle">Iltimos, kuting</p>
+    
+    <div class="status-card">
+      <div class="status-row">
+        <span class="status-label">Buyurtma</span>
+        <span class="status-value order-id" id="orderId">#-----</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Summa</span>
+        <span class="status-value price" id="totalAmount">0 so'm</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Status</span>
+        <span class="status-badge pending" id="statusBadge">
+          <span class="spinner"></span> Tekshirilmoqda
+        </span>
+      </div>
+    </div>
+    
+    <button class="btn btn-primary" onclick="checkNow()" id="checkBtn">
+      <span id="btnText">Qayta tekshirish</span>
+    </button>
+    
+    <button class="btn btn-secondary" onclick="goToApp()" id="menuBtn">
+      Web App ga qaytish
+    </button>
+    
+    <div class="auto-redirect" id="autoRedirect" style="display: none;">
+      5 soniyadan keyin avtomatik qaytadi...
+    </div>
+  </div>
+
+  <script>
+    // SERVER URL
+    const SERVER_URL = 'https://backend-production-1bf4.up.railway.app';
+    
+    // Telegram WebApp
+    let tg = null;
+    if (window.Telegram?.WebApp) {
+      tg = window.Telegram.WebApp;
+      tg.expand();
+      tg.ready();
+      tg.BackButton.show();
+      tg.BackButton.onClick(() => {
+        goToApp();
+      });
+    }
+    
+    // URL dan order_id olish
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlOrderId = urlParams.get('order_id');
+    const storedOrderId = localStorage.getItem('lastOrderId');
+    const orderId = urlOrderId || storedOrderId;
+    
+    const amount = localStorage.getItem('lastOrderAmount') || '0';
+    
+    // UI ni yangilash
+    document.getElementById('orderId').textContent = '#' + (orderId?.slice(-6) || '-----');
+    document.getElementById('totalAmount').textContent = parseInt(amount).toLocaleString() + ' so\'m';
+    
+    let checked = false;
+    let checkCount = 0;
+    const maxChecks = 30;
+    let checkInterval = null;
+    let redirectTimeout = null;
+    
+    // Avtomatik qaytish
+    let secondsLeft = 5;
+    
+    function updateAutoRedirect() {
+      const el = document.getElementById('autoRedirect');
+      if (el) {
+        el.textContent = `${secondsLeft} soniyadan keyin avtomatik qaytadi...`;
+      }
+    }
+    
+    function startAutoRedirect() {
+      secondsLeft = 5;
+      document.getElementById('autoRedirect').style.display = 'block';
+      updateAutoRedirect();
+      
+      redirectTimeout = setInterval(() => {
+        secondsLeft--;
+        updateAutoRedirect();
+        
+        if (secondsLeft <= 0) {
+          clearInterval(redirectTimeout);
+          goToApp();
+        }
+      }, 1000);
+    }
+    
+    function stopAutoRedirect() {
+      if (redirectTimeout) {
+        clearInterval(redirectTimeout);
+        redirectTimeout = null;
+      }
+      document.getElementById('autoRedirect').style.display = 'none';
+    }
+    
+    // Avtomatik tekshirish boshlash
+    function startChecking() {
+      console.log('🔍 Tekshirish boshlandi:', orderId);
+      
+      if (!orderId) {
+        document.getElementById('title').textContent = 'Xatolik';
+        document.getElementById('subtitle').textContent = 'Buyurtma ID topilmadi';
+        updateUI('error', 'Buyurtma ID topilmadi');
+        setTimeout(() => goToApp(), 5000);
+        return;
+      }
+      
+      // Darhol tekshirish
+      setTimeout(() => checkPayment(), 500);
+      setTimeout(() => { if (!checked) checkPayment(); }, 2000);
+      setTimeout(() => { if (!checked) checkPayment(); }, 5000);
+      
+      // Davriy tekshirish
+      checkInterval = setInterval(() => {
+        if (checked || checkCount >= maxChecks) {
+          clearInterval(checkInterval);
+          if (!checked) {
+            startAutoRedirect();
+          }
+          return;
+        }
+        checkPayment();
+      }, 2000);
+    }
+    
+    async function checkPayment() {
+      if (checked || !orderId) return;
+      
+      checkCount++;
+      console.log(`🔍 Tekshirish #${checkCount}:`, orderId);
+      
+      try {
+        const response = await fetch(`${SERVER_URL}/api/orders/${orderId}`);
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            updateUI('error', 'Buyurtma topilmadi');
+            return;
+          }
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const order = await response.json();
+        console.log('📊 Order status:', order);
+        
+        const paymentStatus = order.payment_status || order.paymentStatus;
+        const orderStatus = order.status;
+        
+        if (paymentStatus === 'paid') {
+          // To'lov muvaffaqiyatli
+          checked = true;
+          clearInterval(checkInterval);
+          stopAutoRedirect();
+          
+          document.getElementById('mainIcon').textContent = '✅';
+          document.getElementById('title').textContent = 'To\'lov muvaffaqiyatli!';
+          document.getElementById('subtitle').textContent = 'Buyurtmangiz qabul qilindi';
+          
+          const badge = document.getElementById('statusBadge');
+          badge.className = 'status-badge success';
+          badge.innerHTML = '✅ To\'landi';
+          
+          document.getElementById('checkBtn').classList.add('hidden');
+          document.getElementById('autoRedirect').style.display = 'block';
+          document.getElementById('autoRedirect').textContent = '3 soniyadan keyin avtomatik qaytadi...';
+          
+          // Savatni tozalash
+          localStorage.removeItem('bodrum_cart');
+          localStorage.removeItem('lastOrderId');
+          localStorage.removeItem('lastOrderAmount');
+          
+          // 3 soniyadan keyin qaytish
+          setTimeout(() => goToApp(), 3000);
+          
+        } else if (orderStatus === 'rejected') {
+          updateUI('error', 'Buyurtma bekor qilindi');
+        } else {
+          updateUI('pending', `To'lov kutilmoqda...`);
+        }
+        
+      } catch (e) {
+        console.error('❌ Xato:', e);
+        updateUI('error', 'Aloqa xatosi');
+      }
+    }
+    
+    function updateUI(status, text) {
+      const badge = document.getElementById('statusBadge');
+      const btnText = document.getElementById('btnText');
+      
+      if (status === 'pending') {
+        badge.className = 'status-badge pending';
+        badge.innerHTML = '⏳ ' + text;
+        btnText.textContent = 'Qayta tekshirish';
+      } else if (status === 'error') {
+        badge.className = 'status-badge error';
+        badge.textContent = '❌ ' + text;
+        btnText.textContent = 'Qayta urinish';
+      }
+    }
+    
+    function checkNow() {
+      checkCount = 0;
+      checked = false;
+      stopAutoRedirect();
+      startChecking();
+    }
+    
+    function goToApp() {
+      if (tg) {
+        tg.close();
+      } else {
+        window.location.href = '/';
+      }
+    }
+    
+    // Sahifa yuklanganda
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('🚀 Payment page loaded');
+      startChecking();
+    });
+    
+    window.addEventListener('beforeunload', () => {
+      if (checkInterval) clearInterval(checkInterval);
+      if (redirectTimeout) clearInterval(redirectTimeout);
+    });
+  </script>
+</body>
+</html>
