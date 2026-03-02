@@ -417,7 +417,7 @@ function renderCategories() {
   categoriesContainer.innerHTML = categories.map(cat => `
     <button class="category-btn ${cat.id === 'all' ? 'active' : ''}" data-cat="${cat.id}">
       <span class="category-icon">${cat.icon}</span>
-      <span>${cat.name}</span>
+      <span>${cat.name}</span>  <!-- BU SPAN MUHIM -->
     </button>
   `).join('');
 
