@@ -699,7 +699,7 @@ body {
 }
 
 /* ==========================================
-   CATEGORIES
+   CATEGORIES - TO'G'RILANGAN
    ========================================== */
 
 .categories {
@@ -714,6 +714,10 @@ body {
   z-index: 99;
   border-bottom: 1px solid rgba(212, 175, 55, 0.1);
   animation: fadeInUp 0.5s ease 0.3s both;
+  /* MUHIM: flex-wrap ni o'chirish */
+  flex-wrap: nowrap;
+  /* MUHIM: align items */
+  align-items: center;
 }
 
 .categories::-webkit-scrollbar {
@@ -721,21 +725,30 @@ body {
 }
 
 .category-btn {
+  /* MUHIM: white-space ni o'zgartirish */
+  white-space: nowrap;
   padding: 10px 20px;
   border-radius: 25px;
   border: 1px solid rgba(212, 175, 55, 0.2);
   background: var(--surface);
+  /* MUHIM: rangni aniq belgilash */
   color: var(--text-secondary);
   font-size: 14px;
   font-weight: 600;
-  white-space: nowrap;
   cursor: pointer;
   transition: all var(--transition-normal);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px; /* 6px dan 8px ga oshirish */
   position: relative;
   overflow: hidden;
+  /* MUHIM: flex-shrink ni o'chirish */
+  flex-shrink: 0;
+  /* MUHIM: min-width qo'shish */
+  min-width: fit-content;
+  /* MUHIM: text visibility uchun */
+  text-align: center;
+  line-height: 1.2;
 }
 
 .category-btn::before {
@@ -755,6 +768,7 @@ body {
 
 .category-btn.active {
   background: var(--gold-gradient);
+  /* MUHIM: active holatda rang */
   color: #000;
   border-color: var(--gold-primary);
   box-shadow: var(--shadow-gold);
@@ -768,10 +782,54 @@ body {
 .category-icon {
   font-size: 16px;
   transition: transform var(--transition-normal);
+  /* MUHIM: icon kattaligi */
+  flex-shrink: 0;
 }
 
 .category-btn:hover .category-icon {
   transform: scale(1.2);
+}
+
+/* ==========================================
+   QO'SHIMCHA TO'G'RILASHLAR
+   ========================================== */
+
+/* Agar kategoriya nomi uzun bo'lsa */
+.category-btn span:not(.category-icon) {
+  display: inline-block;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Mobile uchun maxsus sozlamalar */
+@media (max-width: 480px) {
+  .categories {
+    gap: 8px;
+    padding: 12px 16px;
+  }
+  
+  .category-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+    gap: 6px;
+  }
+  
+  .category-icon {
+    font-size: 14px;
+  }
+}
+
+/* Tablet va katta ekranlar uchun */
+@media (min-width: 768px) {
+  .category-btn {
+    padding: 12px 24px;
+    font-size: 15px;
+  }
+  
+  .category-icon {
+    font-size: 18px;
+  }
 }
 
 /* ==========================================
