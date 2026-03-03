@@ -1,5 +1,5 @@
 // ==========================================
-// BODRUM - Web App (Joylashuv bilan)
+// BODRUM - Web App (Joylashuv har safar buyurtma vaqtida)
 // ==========================================
 
 import { getMenuFromLocal, categories } from './menu.js';
@@ -19,7 +19,7 @@ const SERVER_URL = 'https://backend-production-1bf4.up.railway.app';
 
 const menu = getMenuFromLocal();
 let cart = [];
-let currentLocation = null;
+let currentLocation = null; // Har safar yangilanadi
 let activeCategory = 'all';
 let searchQuery = '';
 let currentFoodItem = null;
@@ -95,7 +95,7 @@ function showNotification(message, type = 'info') {
 }
 
 // ==========================================
-// JOYLASHUV FUNKSİYALARI
+// JOYLASHUV FUNKSİYALARI - HAR SAFAR YANGI
 // ==========================================
 
 function showLocationRequestModal() {
@@ -121,7 +121,6 @@ window.requestLocation = function() {
   
   if (!tg) {
     showNotification('Telegram WebApp topilmadi', 'error');
-    // Fallback to browser geolocation
     getGeolocation();
     return;
   }
@@ -151,7 +150,6 @@ window.requestLocation = function() {
       }
     });
   } else {
-    // Fallback
     getGeolocation();
   }
 };
@@ -188,14 +186,10 @@ function handleLocationReceived(location) {
     lng: location.longitude || location.lng || location.long
   };
   
-  // Saqlash
-  localStorage.setItem('bodrum_location', JSON.stringify(currentLocation));
-  
   closeLocationRequestModal();
   showNotification('📍 Joylashuv saqlandi!', 'success');
   
-  // Profilni yangilash
-  renderLocationInProfile();
+  // ⭐ PROFILDA KO'RSATMAYDI - faqat buyurtma uchun saqlaydi
   
   // Agar buyurtma jarayonida bo'lsa, davom etish
   if (pendingPaymentData) {
@@ -207,11 +201,10 @@ function showManualLocationInput() {
   const address = prompt('Manzilingizni kiriting (masalan: "Toshkent, Chilonzor 5-kvartal, 12-uy"):');
   if (address && address.trim()) {
     currentLocation = { address: address.trim(), manual: true };
-    localStorage.setItem('bodrum_location', JSON.stringify(currentLocation));
     closeLocationRequestModal();
     showNotification('Manzil saqlandi!', 'success');
     
-    renderLocationInProfile();
+    // ⭐ PROFILDA KO'RSATMAYDI
     
     if (pendingPaymentData) {
       proceedWithOrder();
@@ -219,50 +212,11 @@ function showManualLocationInput() {
   }
 }
 
-function renderLocationInProfile() {
-  const saved = localStorage.getItem('bodrum_location');
-  if (!saved) return;
-  
-  const location = JSON.parse(saved);
-  
-  // Profilga joylashuvni qo'shish
-  const profileContainer = document.querySelector('.profile-info-display');
-  if (!profileContainer) return;
-  
-  // Eski location display ni o'chirish
-  const oldLocation = document.getElementById('locationDisplay');
-  if (oldLocation) oldLocation.remove();
-  
-  const locationDiv = document.createElement('div');
-  locationDiv.id = 'locationDisplay';
-  locationDiv.className = 'location-display';
-  
-  let locationText = '';
-  let mapLink = '';
-  
-  if (location.lat && location.lng) {
-    locationText = `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
-    mapLink = `https://maps.google.com/?q=${location.lat},${location.lng}`;
-  } else if (location.address) {
-    locationText = location.address;
-  }
-  
-  locationDiv.innerHTML = `
-    <span class="location-icon-small">📍</span>
-    <span class="location-text-small">${locationText}</span>
-    ${mapLink ? `<a href="${mapLink}" target="_blank" class="location-view-btn">Xaritada</a>` : ''}
-  `;
-  
-  profileContainer.appendChild(locationDiv);
-}
+// ⭐ O'CHIRILDI: Profilda joylashuv ko'rsatish funksiyasi
+// function renderLocationInProfile() { ... } - O'CHIRILDI
 
-function loadSavedLocation() {
-  const saved = localStorage.getItem('bodrum_location');
-  if (saved) {
-    currentLocation = JSON.parse(saved);
-    console.log('📍 Saqlangan joylashuv:', currentLocation);
-  }
-}
+// ⭐ O'CHIRILDI: Saqlangan joylashuvni yuklash
+// function loadSavedLocation() { ... } - O'CHIRILDI
 
 // ==========================================
 // PROFILE FUNCTIONS
@@ -345,10 +299,7 @@ async function handleContactReceived(contact) {
       renderProfile();
       renderOrdersList(userOrders);
       
-      // Joylashuv so'rash (agar yo'q bo'lsa)
-      if (!currentLocation) {
-        setTimeout(() => showLocationRequestModal(), 1000);
-      }
+      // ⭐ JOYLASHUV SO'RASH O'CHIRILDI - faqat buyurtma vaqtida so'raladi
     } else {
       throw new Error(result.error || 'Saqlash xatosi');
     }
@@ -396,10 +347,7 @@ async function loadUserProfile() {
       renderProfile();
       renderOrdersList(userOrders);
       
-      // Agar telefon bor lekin joylashuv yo'q bo'lsa
-      if (userProfile.phone && !currentLocation) {
-        setTimeout(() => showLocationRequestModal(), 1500);
-      }
+      // ⭐ JOYLASHUV TEKSHIRUVI O'CHIRILDI - faqat buyurtma vaqtida so'raladi
     } else {
       console.log('❌ Profil topilmadi, kontakt so\'rash kerak');
       showProfileNotFound();
@@ -460,6 +408,8 @@ function renderProfile() {
   if (phone && phone.length === 9) {
     closeContactRequestModal();
   }
+  
+  // ⭐ JOYLASHUV KO'RSATISH O'CHIRILDI
 }
 
 function updateProfileStats() {
@@ -971,7 +921,7 @@ async function sendBotConfirmationRequest(orderId, total) {
 }
 
 // ==========================================
-// ORDER BUTTON - JOYLASHUV TEKSHIRUVI
+// ORDER BUTTON - HAR SAFAR JOYLASHUV SO'RASH
 // ==========================================
 
 document.getElementById('orderBtn').addEventListener('click', async () => {
@@ -987,27 +937,18 @@ document.getElementById('orderBtn').addEventListener('click', async () => {
     return;
   }
   
-  // ⭐ JOYLASHUV TEKSHIRUVI
-  if (!currentLocation) {
-    const saved = localStorage.getItem('bodrum_location');
-    if (saved) {
-      currentLocation = JSON.parse(saved);
-    } else {
-      // Joylashuv so'rash
-      const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
-      pendingPaymentData = {
-        total: total,
-        phone: userProfile.phone,
-        orderId: 'ORD_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
-      };
-      
-      showLocationRequestModal();
-      return;
-    }
-  }
+  // ⭐ HAR SAFAR YANGI JOYLASHUV SO'RASH - avvalgisini o'chirish
+  currentLocation = null;
   
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  proceedWithOrder(total);
+  pendingPaymentData = {
+    total: total,
+    phone: userProfile.phone,
+    orderId: 'ORD_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+  };
+  
+  // Har safar yangi joylashuv so'rash
+  showLocationRequestModal();
 });
 
 function proceedWithOrder(total = null) {
@@ -1280,14 +1221,9 @@ window.submitOrderWithScreenshot = async function() {
   
   // ⭐ JOYLASHUV TEKSHIRUVI
   if (!currentLocation) {
-    const saved = localStorage.getItem('bodrum_location');
-    if (saved) {
-      currentLocation = JSON.parse(saved);
-    } else {
-      showNotification('Joylashuv topilmadi. Iltimos, qayta kiriting', 'error');
-      showLocationRequestModal();
-      return;
-    }
+    showNotification('Joylashuv topilmadi. Iltimos, qayta kiriting', 'error');
+    showLocationRequestModal();
+    return;
   }
   
   const btn = document.getElementById('submitOrderBtn');
@@ -1360,6 +1296,9 @@ window.submitOrderWithScreenshot = async function() {
       modal.classList.remove('show');
     }
     
+    // ⭐ BUYURTMA YUBORILGANDAN KEYIN JOYLASHUVNI TOZALASH
+    currentLocation = null;
+    
     cart = [];
     saveCartLS();
     renderCart();
@@ -1399,12 +1338,12 @@ document.addEventListener('DOMContentLoaded', () => {
   
   try {
     loadCartLS();
-    loadSavedLocation(); // ⭐ Saqlangan joylashuvni yuklash
+    // ⭐ O'CHIRILDI: loadSavedLocation() - saqlangan joylashuvni yuklamaydi
     renderCategories();
     renderMenu();
     renderCart();
     loadUserProfile();
-    renderLocationInProfile(); // ⭐ Joylashuvni profilda ko'rsatish
+    // ⭐ O'CHIRILDI: renderLocationInProfile() - profilda joylashuv ko'rsatilmaydi
   } catch (error) {
     console.error('Init xato:', error);
   }
