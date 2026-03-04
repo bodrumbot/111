@@ -255,26 +255,6 @@ available: true,
 popular: false
 },
 {
-id: 26,
-name: "Bezelye Çorbası",
-price: 40000,
-category: "soup",
-image: "https://i.ibb.co/NbJJjVJ/144.png",
-description: "Гороховый суп с мясом (Говяжье мясо, горох, томатный соус, морковь, картошка)",
-available: true,
-popular: false
-},
-{
-id: 27,
-name: "Fasulye Çorbası",
-price: 40000,
-category: "soup",
-image: "https://i.ibb.co/svX40p1F/142.png",
-description: "Фасолевый суп с мясом (фасоль, мясо говяжье, сладкий перец, помидор, картошка)",
-available: true,
-popular: false
-},
-{
 id: 28,
 name: "Haşlama",
 price: 40000,
@@ -518,32 +498,12 @@ available: true,
 popular: false
 },
 {
-id: 52,
-name: "Karadeniz Levreği",
-price: 160000,
-category: "fish",
-image: "https://i.ibb.co/hJNPmvbP/image.png",
-description: "Черноморская рыба родственник сибаса Levrek, готовиться на мангале",
-available: true,
-popular: true
-},
-{
 id: 53,
 name: "Alabalık",
 price: 120000,
 category: "fish",
 image: "https://i.ibb.co/JRNGPVJL/13.png",
 description: "Форель рыба, гарнир, специи",
-available: true,
-popular: false
-},
-{
-id: 54,
-name: "Izgara Sudak",
-price: 160000,
-category: "fish",
-image: "https://i.ibb.co/ynr1kYBb/5.png",
-description: "Рыба судак, лимон, картофель, лук",
 available: true,
 popular: false
 },
@@ -611,36 +571,6 @@ description: "Ассорти из рыб (жареное филе судака, 
 available: true,
 popular: true,
 isNew: true
-},
-{
-id: 61,
-name: "Alfredo Fettuccine",
-price: 75000,
-category: "pasta",
-image: "https://i.ibb.co/YFxjbw12/47.png",
-description: "Курица, грибы, сыр Пармезан, сливки, Песто соус, чесночный соус",
-available: true,
-popular: true
-},
-{
-id: 62,
-name: "Penne",
-price: 69000,
-category: "pasta",
-image: "https://i.ibb.co/nsKbQx7Q/3.png",
-description: "Томатный соус, чеснок, паста, оливка, оливковое масло, анчоусы",
-available: true,
-popular: false
-},
-{
-id: 63,
-name: "Spaghetti Bolonez",
-price: 81000,
-category: "pasta",
-image: "https://i.ibb.co/pByG1vTm/6.png",
-description: "Спагетти балоньезе, сыр пармезан, томатный соус, приправы, итальянский соус",
-available: true,
-popular: false
 },
 {
 id: 64,
