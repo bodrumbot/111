@@ -56,7 +56,7 @@ popular: false
 },
 {
 id: 6,
-name: "Fasulyesiz Salata",
+name: "Fransuz salatasi",
 price: 52000,
 category: "salad",
 image: "https://i.ibb.co/d4c6vmBN/197.png",
@@ -106,7 +106,7 @@ popular: false
 },
 {
 id: 11,
-name: "Tonlu Bakü Salatası",
+name: "Ton balikli salatasi",
 price: 75000,
 category: "salad",
 image: "https://i.ibb.co/wr38y1WR/159.png",
@@ -176,7 +176,7 @@ popular: false
 },
 {
 id: 18,
-name: "Dolmalık Biber",
+name: "Etli Dolma",
 price: 52000,
 category: "salad",
 image: "https://i.ibb.co/5xfdBT4Q/41.png",
@@ -289,7 +289,7 @@ isNew: true
 },
 {
 id: 31,
-name: "Pufti Ekmek",
+name: "Puf ekmegi",
 price: 15000,
 category: "bread",
 image: "https://i.ibb.co/F41L7QHK/66.png",
@@ -309,7 +309,7 @@ popular: false
 },
 {
 id: 33,
-name: "Türk Pidesi",
+name: "Ekmek",
 price: 5000,
 category: "bread",
 image: "https://i.ibb.co/qYdKjLsH/93.png",
@@ -498,26 +498,6 @@ available: true,
 popular: false
 },
 {
-id: 53,
-name: "Alabalık",
-price: 120000,
-category: "fish",
-image: "https://i.ibb.co/JRNGPVJL/13.png",
-description: "Форель рыба, гарнир, специи",
-available: true,
-popular: false
-},
-{
-id: 55,
-name: "Kızarmış Sazan",
-price: 89000,
-category: "fish",
-image: "https://i.ibb.co/gbbJYynZ/lxe-XGsdhk-EV1zf-Lm-Fgn-MJ.png",
-description: "Жареный сазан, лимон, соус, лук",
-available: true,
-popular: false
-},
-{
 id: 56,
 name: "Levrek",
 price: 160000,
@@ -594,7 +574,7 @@ popular: false
 },
 {
 id: 66,
-name: "Bodrum Steak",
+name: "Şef biftegi",
 price: 119000,
 category: "main",
 image: "https://i.ibb.co/8LTbmNfv/103.png",
@@ -658,16 +638,6 @@ price: 140000,
 category: "main",
 image: "https://i.ibb.co/9924hdsT/e-If-Tev-XAm-H44bs30-N5-Zln.png",
 description: "Картошка по домашнему (говядина мясо, картошка, черри, лук, латук, зелень, специи)",
-available: true,
-popular: false
-},
-{
-id: 72,
-name: "Bodrum Fajita",
-price: 119000,
-category: "main",
-image: "https://i.ibb.co/0VG3k6G7/62.png",
-description: "Болгарский перец, помидоры, сливки, говяжье мясо, соус итальянский",
 available: true,
 popular: false
 },
@@ -753,7 +723,7 @@ popular: false
 },
 {
 id: 81,
-name: "Tavuk But",
+name: "Tavuk Pirzolasi",
 price: 55000,
 category: "main",
 image: "https://i.ibb.co/5hcHkqDw/25.png",
