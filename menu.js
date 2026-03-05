@@ -19,7 +19,7 @@ id: 2,
 name: "Erkek Kaprisi Salatası",
 price: 59000,
 category: "salad",
-image: "https://i.ibb.co/sdRD7ysF/188.png",
+image: "https://i.ibb.co/zVcQGdvq/193.png",
 description: "Мясо говяжье, индейка, копченная колбаса, сыр, маринованные шампиньоны, зеленый лук, майонез",
 available: true,
 popular: false
