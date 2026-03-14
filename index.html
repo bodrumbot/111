@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0a0a0a"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <title>BODRUM</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <!-- MENYU TAB -->
+  <section id="menu" class="tab-content active">
+    <div class="header">
+      <div class="brand">BODRUM</div>
+      <div class="search-container">
+        <div class="search-box">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" class="search-input" id="searchInput" placeholder="Menyudan qidirish...">
+        </div>
+      </div>
+    </div>
+
+    <div class="categories" id="categories"></div>
+    <main id="menuContent"></main>
+  </section>
+
+  <!-- SAVAT TAB -->
+  <section id="cart" class="tab-content">
+    <div class="header">
+      <div class="brand">BODRUM</div>
+    </div>
+    <main>
+      <div id="cartList" class="cart-list"></div>
+      <div id="cartTotal">Umumiy: 0 so'm</div>
+      <button id="orderBtn">Buyurtma berish</button>
+    </main>
+  </section>
+
+  <!-- PROFIL TAB -->
+  <section id="profile" class="tab-content">
+    <div class="profile-container">
+      <div class="profile-header-card">
+        <div class="profile-avatar-section">
+          <div class="profile-avatar" id="profileAvatar">👤</div>
+          <div class="profile-name" id="profileName">Mehmon</div>
+          <div class="profile-phone" id="profilePhone">+998 __ _______</div>
+          <div class="profile-source" id="profileSource">🤖 Telegram orqali</div>
+          
+          <button class="update-phone-btn" id="updatePhoneBtn" onclick="requestContact()" style="display: none;">
+            📱 Telefon raqamini yangilash
+          </button>
+        </div>
+        
+        <div class="profile-stats">
+          <div class="stat-box">
+            <div class="stat-box-icon">📦</div>
+            <span class="stat-box-value" id="totalOrders">0</span>
+            <span class="stat-box-label">Buyurtma</span>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-icon">💰</div>
+            <span class="stat-box-value" id="totalSpent">0</span>
+            <span class="stat-box-label">So'm</span>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-icon">⭐</div>
+            <span class="stat-box-value" id="vipStatus">🥉</span>
+            <span class="stat-box-label">Status</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-card read-only">
+        <div class="info-card-header">
+          <div class="info-card-icon">👤</div>
+          <div>
+            <div class="info-card-title">Mijoz ma'lumotlari</div>
+            <div class="info-card-subtitle">Telegram orqali avtomatik olingan</div>
+          </div>
+        </div>
+        
+        <div class="profile-info-display">
+          <div class="info-item">
+            <span class="info-label">Ism:</span>
+            <span class="info-value" id="displayName">---</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Telefon:</span>
+            <span class="info-value" id="displayPhone">---</span>
+          </div>
+        </div>
+        
+
+
+      <div class="orders-section">
+        <div class="orders-header">
+          <div class="orders-title">📋 Buyurtmalar tarixi</div>
+          <span class="orders-count" id="ordersCountBadge">0</span>
+        </div>
+        <div id="ordersList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOCATION REQUEST MODAL -->
+  <div id="locationRequestModal" class="modal-overlay">
+    <div class="modal-box location-request-modal">
+      <div class="location-icon">📍</div>
+      <div class="location-title">Joylashuvingizni yuboring</div>
+      <div class="location-text">
+        Buyurtmani yetkazib berish uchun aniq manzilingiz kerak.
+        Iltimos, joylashuvingizni yuboring.
+      </div>
+      
+      <div class="location-benefits">
+        <div class="benefit-item">
+          <span class="benefit-icon">🚀</span>
+          <span>Tezkor yetkazib berish</span>
+        </div>
+        <div class="benefit-item">
+          <span class="benefit-icon">📍</span>
+          <span>Aniq manzil</span>
+        </div>
+      </div>
+      
+      <button class="btn-request-location" onclick="requestLocation()">
+        <span>📍 Joylashuvni yuborish</span>
+      </button>
+      
+      <button class="btn-cancel-location" onclick="closeLocationRequestModal()">
+        Keyinroq
+      </button>
+    </div>
+  </div>
+
+  <!-- KONTAKT SO'RASH MODALI -->
+  <div id="contactRequestModal" class="modal-overlay">
+    <div class="modal-box contact-request-modal">
+      <div class="contact-icon">📱</div>
+      <div class="contact-title">Telefon raqamingiz kerak</div>
+      <div class="contact-text">
+        Buyurtma berish va profilingizni yaratish uchun telefon raqamingizni yuboring.
+        Bu ma'lumot xavfsiz saqlanadi.
+      </div>
+      
+      <div class="contact-benefits">
+        <div class="benefit-item">
+          <span class="benefit-icon">✅</span>
+          <span>Buyurtma tarixi</span>
+        </div>
+        <div class="benefit-item">
+          <span class="benefit-icon">✅</span>
+          <span>Tezkor buyurtma</span>
+        </div>
+        <div class="benefit-item">
+          <span class="benefit-icon">✅</span>
+          <span>Xavfsiz to'lov</span>
+        </div>
+      </div>
+      
+      <button class="btn-request-contact" onclick="requestContactFromModal()">
+        <span>📱 Telefon raqamini yuborish</span>
+      </button>
+      
+      <button class="btn-cancel-contact" onclick="closeContactRequestModal()">
+        Keyinroq
+      </button>
+    </div>
+  </div>
+
+  <!-- FOOD DETAIL MODAL -->
+  <div id="foodDetailModal" class="modal-overlay">
+    <div class="food-detail-modal">
+      <button class="close-food-modal" onclick="closeFoodModal()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      
+      <div class="food-detail-image-wrapper">
+        <img id="foodModalImage" src="" alt="" loading="lazy">
+      </div>
+      
+      <div class="food-detail-content">
+        <h2 id="foodModalName" class="food-detail-title"></h2>
+        <div id="foodModalPrice" class="food-detail-price"></div>
+        <div class="food-detail-desc-box">
+          <p id="foodModalDescription"></p>
+        </div>
+      </div>
+      
+      <div class="food-detail-footer">
+        <button id="foodModalAddBtn" class="food-detail-add-btn">
+          Savatchaga qo'shish
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAYME INSTRUCTION MODAL -->
+  <div id="paymeInstructionModal" class="modal-overlay">
+    <div class="modal-box instruction-modal">
+      <div class="modal-title">💳 Payme orqali to'lov</div>
+      
+      <div class="instruction-content">
+        <div class="instruction-step">
+          <div class="step-number">1</div>
+          <div class="step-text">
+            <strong>Payme orqali to'lov qiling</strong>
+            <p>To'lov tugmasini bosib, Payme ilovasida to'lovni amalga oshiring</p>
+          </div>
+        </div>
+        
+        <div class="instruction-step">
+          <div class="step-number">2</div>
+          <div class="step-text">
+            <strong>Skrinshot oling</strong>
+            <p>To'lov muvaffaqiyatli bo'lgandan so'ng, ekran rasmini oling</p>
+          </div>
+        </div>
+        
+        <div class="instruction-step">
+          <div class="step-number">3</div>
+          <div class="step-text">
+            <strong>Skrinshotni yuboring</strong>
+            <p>Qaytib kelib, skrinshotni yuklang va buyurtma yuboring</p>
+          </div>
+        </div>
+        
+        <div class="screenshot-example">
+          <div class="example-label">📸 Namuna skrinshot:</div>
+          <div class="example-image-wrapper">
+            <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjgwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjgwMCIgZmlsbD0iIzFhMWEyMiIvPgogIDx0ZXh0IHg9IjUwJSIgeT0iMzAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiNGRkQ3MDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPgogICAg8J+TjCBQYXltZSBza3JpbnNob3QKICA8L3RleHQ+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzAwRDA4NCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+CiAgICA8L3RleHQ+CiAgPHRleHQgeD0iNTAlIiB5PSI2MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2FhYSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+CiAgICBUb2xvdCBtdXZhZmZhcWl5YXRsaSBib2xnYW4geGFib24KICA8L3RleHQ+CiAgPGNpcmNsZSBjeD0iNTAlIiBjeT0iNzAlIiByPSI0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDBEMDg0IiBzdHJva2Utd2lkdGg9IjMiLz4KICA8cGF0aCBkPSJNMTgwIDM1MCBsMjAgMjAgbDQwIC00MCIgc3Ryb2tlPSIjMDBEMDg0IiBzdHJva2Utd2lkdGg9IjMiIGZpbGw9Im5vbmUiLz4KPC9zdmc+" 
+                alt="Payme skrinshot namuna" 
+                id="exampleScreenshot">
+            <div class="example-overlay">
+              <span>Mana shunday skrinshot</span>
+            </div>
+          </div>
+          <div class="example-hint">
+            💡 Payme dan "To'lov muvaffaqiyatli" degan xabarni skrinshot qiling
+          </div>
+        </div>
+      </div>
+      
+      <button class="btn-understand" id="understandBtn">
+        <span>Tushundim, to'lovga o'tish</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </button>
+      
+      <button class="btn-cancel-instruction" onclick="closeInstructionModal()">
+        Bekor qilish
+      </button>
+    </div>
+  </div>
+
+  <!-- PAYMENT CONFIRMATION DIALOG -->
+  <div id="paymentConfirmDialog" class="modal-overlay" style="display: none;">
+    <div class="modal-box confirm-dialog">
+      <div class="confirm-icon">💳</div>
+      <div class="confirm-title">To'lovni amalga oshirdingizmi?</div>
+      <div class="confirm-amount" id="confirmAmount">0 so'm</div>
+      <div class="confirm-text">
+        Agar to'lov muvaffaqiyatli bo'lgan bo'lsa, skrinshot yuklang
+      </div>
+      
+      <div class="confirm-buttons">
+        <button class="btn-yes" id="btnYesConfirm" onclick="confirmPaymentFromWebApp()">
+          ✅ Ha, to'lov qildim
+        </button>
+        <button class="btn-no" onclick="cancelPayment()">
+          ❌ Yo'q, bekor qilish
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREENSHOT UPLOAD MODAL -->
+  <div id="screenshotModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box screenshot-modal">
+      <div class="modal-title">📸 To'lov skrinshotini yuklang</div>
+      
+      <div class="screenshot-icon">📱</div>
+      
+      <div class="screenshot-instructions">
+        <p>1. Payme dan to'lov skrinshotini oling</p>
+        <p>2. Pastdagi tugmani bosib yuklang</p>
+        <p>3. Admin tekshirgach buyurtma qabul qilinadi</p>
+      </div>
+      
+      <div class="screenshot-upload-area" id="screenshotUploadArea">
+        <input type="file" id="screenshotInput" accept="image/*" style="display:none;">
+        <div class="upload-placeholder" onclick="document.getElementById('screenshotInput').click()">
+          <div class="upload-icon">📷</div>
+          <div class="upload-text">Skrinshot tanlash</div>
+          <div class="upload-hint">yoki bu yerga tashlang</div>
+        </div>
+        <div class="upload-preview" id="uploadPreview" style="display:none;">
+          <img id="previewImage" src="" alt="Preview">
+          <button class="change-image" onclick="document.getElementById('screenshotInput').click()">🔄 O'zgartirish</button>
+        </div>
+      </div>
+      
+      <div class="order-summary">
+        <div class="summary-row">
+          <span>Buyurtma:</span>
+          <span id="summaryOrderId">#-----</span>
+        </div>
+      </div>
+      
+      <button class="btn-submit-order" id="submitOrderBtn" onclick="submitOrderWithScreenshot()" disabled>
+        📤 Buyurtma yuborish
+      </button>
+      
+      <button class="btn-cancel-order" onclick="cancelScreenshot()">Bekor qilish</button>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAVIGATION -->
+  <nav class="bottom-bar">
+    <button class="tab active" data-tab="menu">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M3 3h18v2H3V3zm0 4h18v2H3V7zm0 4h18v2H3v-2z"/>
+      </svg>
+      <span class="label">Menyu</span>
+    </button>
+    <button class="tab" data-tab="cart">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
+      </svg>
+      <span class="label">Savat</span>
+      <span id="cartBadge">0</span>
+    </button>
+    <button class="tab" data-tab="profile">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+      </svg>
+      <span class="label">Profil</span>
+    </button>
+  </nav>
+
+  <!-- Scripts -->
+  <script type="module" src="./db.js"></script>
+  <script type="module" src="./script.js"></script>
+</body>
+</html>
