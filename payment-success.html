@@ -1,1 +1,319 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>To'lov - BODRUM</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --gold-primary: #FFD700;
+      --gold-light: #FFE55C;
+      --gold-dark: #D4AF37;
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --surface-light: #1f1f1f;
+      --success: #00D084;
+      --warning: #FFA502;
+      --danger: #FF4757;
+      --text: #FFFFFF;
+      --text-secondary: #A0A0A0;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    
+    .icon-wrapper {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold-primary), var(--gold-dark));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 32px;
+      animation: pulse 2s infinite;
+      box-shadow: 0 8px 32px rgba(212, 175, 55, 0.3);
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 8px 32px rgba(212, 175, 55, 0.3); }
+      50% { transform: scale(1.05); box-shadow: 0 12px 40px rgba(212, 175, 55, 0.5); }
+    }
+    
+    .icon {
+      font-size: 60px;
+    }
+    
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, var(--gold-primary), var(--gold-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .subtitle {
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+      font-size: 16px;
+    }
+    
+    .status-card {
+      background: linear-gradient(145deg, var(--surface), var(--surface-light));
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 24px;
+      border: 1px solid rgba(212, 175, 55, 0.15);
+    }
+    
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+    }
+    
+    .status-row:last-child {
+      border-bottom: none;
+    }
+    
+    .status-label {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    
+    .status-value {
+      font-weight: 700;
+      font-size: 14px;
+    }
+    
+    .status-value.order-id {
+      color: var(--gold-primary);
+      font-family: monospace;
+    }
+    
+    .status-value.price {
+      color: var(--gold-primary);
+      font-size: 20px;
+    }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    
+    .status-badge.pending {
+      background: rgba(255, 165, 2, 0.15);
+      color: var(--warning);
+    }
+    
+    .status-badge.success {
+      background: rgba(0, 208, 132, 0.15);
+      color: var(--success);
+    }
+    
+    .status-badge.error {
+      background: rgba(255, 71, 87, 0.15);
+      color: var(--danger);
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 18px;
+      border-radius: 16px;
+      border: none;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-transform: uppercase;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gold-primary), var(--gold-dark));
+      color: #000;
+      margin-bottom: 12px;
+      box-shadow: 0 6px 20px rgba(212, 175, 55, 0.3);
+    }
+    
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+    
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 2px solid rgba(212, 175, 55, 0.3);
+    }
+    
+    .loader {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(0,0,0,0.3);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+    
+    .hidden { display: none !important; }
+    
+    .success-message {
+      background: rgba(0, 208, 132, 0.1);
+      border: 1px solid rgba(0, 208, 132, 0.3);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    
+    .success-message h2 {
+      color: var(--success);
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+    
+    .success-message p {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    
+    .close-info {
+      margin-top: 20px;
+      padding: 16px;
+      background: rgba(212, 175, 55, 0.05);
+      border-radius: 12px;
+      border: 1px dashed rgba(212, 175, 55, 0.2);
+    }
+    
+    .close-info p {
+      color: var(--text-secondary);
+      font-size: 13px;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon-wrapper">
+      <div class="icon" id="mainIcon">💳</div>
+    </div>
+    
+    <h1 id="title">To'lov amalga oshirildi!</h1>
+    <p class="subtitle" id="subtitle">Buyurtmangiz qabul qilindi</p>
+    
+    <div class="success-message" id="successMessage">
+      <h2>✅ Rahmat!</h2>
+      <p>To'lovingiz muvaffaqiyatli qabul qilindi. Buyurtmangiz tez orada yetkazib beriladi.</p>
+    </div>
+    
+    <div class="status-card">
+      <div class="status-row">
+        <span class="status-label">Buyurtma</span>
+        <span class="status-value order-id" id="orderId">#-----</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Summa</span>
+        <span class="status-value price" id="totalAmount">0 so'm</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Status</span>
+        <span class="status-badge success" id="statusBadge">
+          ✅ Qabul qilindi
+        </span>
+      </div>
+    </div>
+    
+    <button class="btn btn-primary" onclick="closeWindow()" id="closeBtn">
+      Yopish
+    </button>
+    
+    <div class="close-info">
+      <p>⏰ Bu sahifa avtomatik yopiladi yoki yuqoridagi tugmani bosing</p>
+    </div>
+  </div>
 
+  <script>
+    // Telegram WebApp
+    let tg = null;
+    if (window.Telegram?.WebApp) {
+      tg = window.Telegram.WebApp;
+      tg.expand();
+      tg.ready();
+    }
+    
+    // URL dan order_id olish
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get('order_id') || localStorage.getItem('lastOrderId');
+    const amount = localStorage.getItem('lastOrderAmount') || '0';
+    
+    // UI ni yangilash
+    document.getElementById('orderId').textContent = '#' + (orderId?.slice(-6) || '-----');
+    document.getElementById('totalAmount').textContent = parseInt(amount).toLocaleString() + ' so\'m';
+    
+    // 5 soniyadan keyin avtomatik yopish (ixtiyoriy)
+    setTimeout(() => {
+      closeWindow();
+    }, 5000);
+    
+    function closeWindow() {
+      if (tg) {
+        tg.close();
+      } else {
+        window.close();
+        // Agar window.close() ishlamasa, bosh sahifaga yo'naltirish
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 100);
+      }
+    }
+    
+    // Savatni tozalash
+    localStorage.removeItem('bodrum_cart');
+    localStorage.removeItem('lastOrderId');
+    localStorage.removeItem('lastOrderAmount');
+  </script>
+</body>
+</html>
