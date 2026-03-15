@@ -1,6 +1,6 @@
 // ==========================================
 // BODRUM - Universal Web App (WebApp + Sayt)
-// Payme avtomatik to'lov tizimi
+// Payme avtomatik to'lov + POLLING tizimi
 // ==========================================
 
 import { getMenuFromLocal, categories } from './menu.js';
@@ -33,6 +33,13 @@ let searchQuery = '';
 let currentFoodItem = null;
 let userProfile = null;
 let userOrders = [];
+
+// ⭐ POLLING VARIABLES
+let pollingInterval = null;
+let currentOrderId = null;
+let isPolling = false;
+let pollingAttempts = 0;
+const MAX_POLLING_ATTEMPTS = 180; // 15 daqiqa = 180 ta 5-soniyalik tekshiruv
 
 // PAYME CONFIG
 const PAYME_MERCHANT_ID = '698d8268f7c89c2bb7cfc08e';
@@ -95,6 +102,404 @@ function showNotification(message, type = 'info') {
   div.textContent = message;
   document.body.appendChild(div);
   setTimeout(() => div.remove(), 4000);
+}
+
+// ==========================================
+// ⭐ POLLING TO'LOV TEKSHIRUVI
+// ==========================================
+
+function startPaymentPolling(orderId) {
+  console.log('🔄 Polling boshlandi:', orderId);
+  currentOrderId = orderId;
+  isPolling = true;
+  pollingAttempts = 0;
+  
+  // To'lov modalini ko'rsatish
+  showPaymentPendingModal(orderId);
+  
+  // Har 5 soniyada tekshirish
+  pollingInterval = setInterval(async () => {
+    pollingAttempts++;
+    console.log(`🔄 Polling tekshiruvi #${pollingAttempts}: ${orderId}`);
+    
+    if (pollingAttempts >= MAX_POLLING_ATTEMPTS) {
+      stopPaymentPolling();
+      showPaymentExpiredModal(orderId);
+      return;
+    }
+    
+    await checkPaymentStatus(orderId);
+  }, 5000);
+}
+
+function stopPaymentPolling() {
+  console.log('🛑 Polling to\'xtatildi');
+  isPolling = false;
+  
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+  }
+  
+  // Modalni yopish
+  closePaymentPendingModal();
+}
+
+async function checkPaymentStatus(orderId) {
+  try {
+    const response = await fetch(`${SERVER_URL}/api/orders/${orderId}/payment-status`);
+    const result = await response.json();
+    
+    console.log('📊 To\'lov statusi:', result);
+    
+    if (result.paid) {
+      // ✅ TO'LOV MUVAFFAQIYATLI
+      stopPaymentPolling();
+      
+      // Muvaffaqiyat modalini ko'rsatish
+      showPaymentSuccessModal(result);
+      
+      // Savatni tozalash
+      cart = [];
+      saveCartLS();
+      renderCart();
+      
+      // Profilni yangilash
+      if (isTelegramWebApp) {
+        loadUserProfile();
+      }
+      
+      return;
+    }
+    
+    if (result.expired || result.cancelled) {
+      // ❌ TO'LOV BEKOR QILINGAN YOKI MUDDATI TUGADI
+      stopPaymentPolling();
+      showPaymentExpiredModal(orderId);
+      return;
+    }
+    
+    // ⏳ Hali to'lanmagan - davom etish
+    updatePaymentPendingStatus(pollingAttempts);
+    
+  } catch (error) {
+    console.error('❌ Polling xatosi:', error);
+  }
+}
+
+// ==========================================
+// ⭐ TO'LOV MODALLARI
+// ==========================================
+
+function showPaymentPendingModal(orderId) {
+  // Avvalgi modalni o'chirish
+  const existing = document.getElementById('paymentPendingModal');
+  if (existing) existing.remove();
+  
+  const modal = document.createElement('div');
+  modal.id = 'paymentPendingModal';
+  modal.className = 'modal-overlay show';
+  modal.style.zIndex = '5000';
+  modal.innerHTML = `
+    <div class="modal-box payment-pending-modal" style="text-align: center; max-width: 400px;">
+      <div class="payment-spinner" style="
+        width: 80px;
+        height: 80px;
+        border: 4px solid rgba(255,215,0,0.2);
+        border-top-color: #FFD700;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 24px;
+      "></div>
+      
+      <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 12px; color: #fff;">
+        ⏳ To'lov kutilmoqda
+      </h2>
+      
+      <p style="color: #888; margin-bottom: 20px; font-size: 15px;">
+        Buyurtma: <b style="color: #FFD700;">#${orderId.slice(-6)}</b>
+      </p>
+      
+      <div class="payment-progress" style="
+        background: rgba(255,255,255,0.1);
+        height: 8px;
+        border-radius: 4px;
+        margin-bottom: 16px;
+        overflow: hidden;
+      ">
+        <div id="paymentProgressBar" style="
+          background: linear-gradient(90deg, #FFD700, #D4AF37);
+          height: 100%;
+          width: 0%;
+          transition: width 0.3s ease;
+          border-radius: 4px;
+        "></div>
+      </div>
+      
+      <p id="paymentStatusText" style="color: #888; font-size: 13px; margin-bottom: 20px;">
+        Payme da to'lovni amalga oshiring...
+      </p>
+      
+      <div class="payment-timer" style="
+        background: rgba(255,215,0,0.1);
+        padding: 12px 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(255,215,0,0.2);
+      ">
+        <span style="color: #FFD700; font-size: 14px; font-weight: 600;">
+          ⏱️ Qolgan vaqt: <span id="paymentTimer">15:00</span>
+        </span>
+      </div>
+      
+      <button onclick="stopPaymentPolling()" style="
+        background: transparent;
+        color: #FF4757;
+        border: 2px solid rgba(255,71,87,0.3);
+        padding: 14px 24px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      " onmouseover="this.style.background='rgba(255,71,87,0.1)'" 
+      onmouseout="this.style.background='transparent'">
+        ❌ Bekor qilish
+      </button>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Timer boshlash
+  startPaymentTimer();
+}
+
+function startPaymentTimer() {
+  let minutes = 15;
+  let seconds = 0;
+  
+  const timerInterval = setInterval(() => {
+    if (!isPolling) {
+      clearInterval(timerInterval);
+      return;
+    }
+    
+    if (seconds === 0) {
+      minutes--;
+      seconds = 59;
+    } else {
+      seconds--;
+    }
+    
+    const timerEl = document.getElementById('paymentTimer');
+    if (timerEl) {
+      timerEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    if (minutes === 0 && seconds === 0) {
+      clearInterval(timerInterval);
+    }
+  }, 1000);
+}
+
+function updatePaymentPendingStatus(attempt) {
+  const progress = Math.min((attempt / MAX_POLLING_ATTEMPTS) * 100, 100);
+  const progressBar = document.getElementById('paymentProgressBar');
+  const statusText = document.getElementById('paymentStatusText');
+  
+  if (progressBar) {
+    progressBar.style.width = `${progress}%`;
+  }
+  
+  if (statusText) {
+    const dots = '.'.repeat((attempt % 3) + 1);
+    statusText.textContent = `To'lov tekshirilmoqda${dots}`;
+  }
+}
+
+function closePaymentPendingModal() {
+  const modal = document.getElementById('paymentPendingModal');
+  if (modal) {
+    modal.classList.remove('show');
+    setTimeout(() => modal.remove(), 300);
+  }
+}
+
+function showPaymentSuccessModal(result) {
+  const order = result.order || {};
+  
+  const modal = document.createElement('div');
+  modal.id = 'paymentSuccessModal';
+  modal.className = 'modal-overlay show';
+  modal.style.zIndex = '6000';
+  modal.innerHTML = `
+    <div class="modal-box payment-success-modal" style="text-align: center; max-width: 400px;">
+      <div style="
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, #00D084, #00b06b);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 50px;
+        margin: 0 auto 24px;
+        animation: scaleIn 0.5s ease;
+        box-shadow: 0 8px 32px rgba(0,208,132,0.3);
+      ">
+        ✅
+      </div>
+      
+      <h2 style="font-size: 26px; font-weight: 700; margin-bottom: 12px; color: #00D084;">
+        To'lov muvaffaqiyatli!
+      </h2>
+      
+      <p style="color: #888; margin-bottom: 20px; font-size: 15px;">
+        Buyurtmangiz avtomatik qabul qilindi
+      </p>
+      
+      <div style="
+        background: rgba(0,208,132,0.1);
+        border: 1px solid rgba(0,208,132,0.2);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 24px;
+      ">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="color: #888; font-size: 14px;">Buyurtma:</span>
+          <span style="color: #FFD700; font-weight: 700; font-family: monospace;">
+            #${order.order_id?.slice(-6) || '-----'}
+          </span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="color: #888; font-size: 14px;">Summa:</span>
+          <span style="color: #FFD700; font-weight: 700;">
+            ${parseInt(order.total || 0).toLocaleString()} so'm
+          </span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: #888; font-size: 14px;">Status:</span>
+          <span style="color: #00D084; font-weight: 700;">
+            ✅ Qabul qilindi
+          </span>
+        </div>
+      </div>
+      
+      <button onclick="closePaymentSuccessModal(); switchTab('profile');" style="
+        background: linear-gradient(135deg, #FFD700, #D4AF37);
+        color: #000;
+        border: none;
+        padding: 18px 32px;
+        border-radius: 14px;
+        font-size: 16px;
+        font-weight: 800;
+        cursor: pointer;
+        width: 100%;
+        transition: all 0.3s ease;
+        box-shadow: 0 6px 20px rgba(212,175,55,0.3);
+      " onmouseover="this.style.transform='translateY(-2px)'" 
+      onmouseout="this.style.transform='translateY(0)'">
+        Buyurtmalarimni ko'rish →
+      </button>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Konfetti effekti
+  createConfetti();
+}
+
+function closePaymentSuccessModal() {
+  const modal = document.getElementById('paymentSuccessModal');
+  if (modal) {
+    modal.classList.remove('show');
+    setTimeout(() => modal.remove(), 300);
+  }
+}
+
+function showPaymentExpiredModal(orderId) {
+  const modal = document.createElement('div');
+  modal.id = 'paymentExpiredModal';
+  modal.className = 'modal-overlay show';
+  modal.style.zIndex = '6000';
+  modal.innerHTML = `
+    <div class="modal-box payment-expired-modal" style="text-align: center; max-width: 400px;">
+      <div style="
+        width: 100px;
+        height: 100px;
+        background: rgba(255,71,87,0.2);
+        border: 2px solid #FF4757;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 50px;
+        margin: 0 auto 24px;
+        animation: shake 0.5s ease;
+      ">
+        ⏰
+      </div>
+      
+      <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 12px; color: #FF4757;">
+        To'lov muddati tugadi
+      </h2>
+      
+      <p style="color: #888; margin-bottom: 24px; font-size: 15px; line-height: 1.6;">
+        15 daqiqa ichida to'lov amalga oshirilmadi.<br>
+        Buyurtma bekor qilindi.
+      </p>
+      
+      <button onclick="closePaymentExpiredModal(); switchTab('menu');" style="
+        background: linear-gradient(135deg, #FFD700, #D4AF37);
+        color: #000;
+        border: none;
+        padding: 18px 32px;
+        border-radius: 14px;
+        font-size: 16px;
+        font-weight: 800;
+        cursor: pointer;
+        width: 100%;
+        transition: all 0.3s ease;
+        box-shadow: 0 6px 20px rgba(212,175,55,0.3);
+      ">
+        Qayta buyurtma berish
+      </button>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+}
+
+function closePaymentExpiredModal() {
+  const modal = document.getElementById('paymentExpiredModal');
+  if (modal) {
+    modal.classList.remove('show');
+    setTimeout(() => modal.remove(), 300);
+  }
+}
+
+function createConfetti() {
+  const colors = ['#FFD700', '#00D084', '#FF4757', '#FFA502', '#3498db'];
+  
+  for (let i = 0; i < 50; i++) {
+    const confetti = document.createElement('div');
+    confetti.style.cssText = `
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      left: ${Math.random() * 100}vw;
+      top: -10px;
+      border-radius: 50%;
+      z-index: 9999;
+      animation: confetti-fall ${2 + Math.random() * 2}s linear forwards;
+    `;
+    document.body.appendChild(confetti);
+    
+    setTimeout(() => confetti.remove(), 4000);
+  }
 }
 
 // ==========================================
@@ -406,7 +811,6 @@ function showProfileNotFound() {
   if (displayPhone) displayPhone.textContent = '---';
 
   // ⭐ Ixtiyoriy profil kiritish - majburiy emas
-  // Foydalanuvchi xohlaganda profilini kiritishi mumkin
   const updateBtn = document.getElementById('updatePhoneBtn');
   if (updateBtn) {
     updateBtn.style.display = 'block';
@@ -457,7 +861,7 @@ window.saveProfileFromInput = function() {
   
   if (phone) {
     // Telefon formatini tozalash
-    phone = phone.replace(/\\D/g, '');
+    phone = phone.replace(/\D/g, '');
     if (phone.startsWith('998')) phone = phone.substring(3);
     if (phone.startsWith('+998')) phone = phone.substring(4);
     phone = phone.slice(-9);
@@ -484,7 +888,7 @@ window.requestContact = function() {
         const contact = tg.initDataUnsafe?.contact;
         if (contact) {
           let phone = contact.phone_number || '';
-          phone = phone.replace(/\\D/g, '');
+          phone = phone.replace(/\D/g, '');
           if (phone.startsWith('998')) phone = phone.substring(3);
           phone = phone.slice(-9);
           
@@ -819,7 +1223,7 @@ window.switchTab = function(tabName) {
 };
 
 // ==========================================
-// PAYMENT & ORDER - AVTOMATIK TIZIM (IXTIYORIY PROFIL)
+// PAYMENT & ORDER - POLLING TIZIMI
 // ==========================================
 
 document.getElementById('orderBtn').addEventListener('click', async () => {
@@ -832,7 +1236,6 @@ document.getElementById('orderBtn').addEventListener('click', async () => {
 
   // ⭐ PROFIL IXTIVORIY - Agar yo'q bo'lsa default qiymatlar
   if (!userProfile || !userProfile.phone) {
-    // Profil yo'q - lekin buyurtma berish mumkin (default qiymatlar bilan)
     console.log('ℹ️ Profil yo\'q, default qiymatlar bilan davom etish');
   }
 
@@ -872,9 +1275,9 @@ async function proceedToPayment(total) {
       location: currentLocation ? 
         (currentLocation.lat ? `${currentLocation.lat},${currentLocation.lng}` : currentLocation.address) 
         : null,
-      tgId: isTelegramWebApp ? userId : null, // ⭐ Faqat WebApp dan kirgan bo'lsa tgId
+      tgId: isTelegramWebApp ? userId : null,
       initiated_from: isTelegramWebApp ? 'webapp' : 'website',
-      source: isTelegramWebApp ? 'webapp' : 'website' // ⭐ Source qo'shildi
+      source: isTelegramWebApp ? 'webapp' : 'website'
     };
 
     console.log('📤 Buyurtma yuborilmoqda:', orderData);
@@ -892,10 +1295,8 @@ async function proceedToPayment(total) {
     const order = await response.json();
     console.log('✅ Buyurtma yaratildi:', order);
 
-    // 2. Savatni tozalash
-    cart = [];
-    saveCartLS();
-    currentLocation = null;
+    // 2. ⭐ POLLING BOSHLASH
+    startPaymentPolling(orderId);
 
     // 3. Payme ga yo'naltirish
     const amountTiyin = Math.round(total * 100);
@@ -907,18 +1308,14 @@ async function proceedToPayment(total) {
 
     // ⭐ TELEGRAM WEBAPP yoki ODDIY SAYT
     if (isTelegramWebApp && tg?.openLink) {
-      // Telegram WebApp - link ochib, WebApp ni yopmaslik (to'lovdan keyin qaytish shart emas)
       tg.openLink(paymeUrl, { try_instant_view: false });
-      showNotification('💳 To\'lov sahifasiga yo\'naltirildik!', 'info');
-      // WebApp ni yopmaymiz - foydalanuvchi o'zi qaytadi
     } else {
-      // Oddiy sayt - yangi tabda ochish
       window.open(paymeUrl, '_blank');
-      showNotification('💳 To\'lov sahifasiga yo\'naltirildik! To\'lovdan keyin buyurtma avtomatik qabul qilinadi.', 'success');
     }
 
   } catch (error) {
     console.error('❌ Payment error:', error);
+    stopPaymentPolling();
     showNotification('Xatolik: ' + error.message, 'error');
   }
 }
@@ -930,15 +1327,50 @@ async function proceedToPayment(total) {
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🚀 DOMContentLoaded - BODRUM Universal WebApp');
   console.log('📱 Mode:', isTelegramWebApp ? 'Telegram WebApp' : 'Regular Website');
+  console.log('⏰ Polling tizimi faollashdi');
 
   try {
     loadCartLS();
     renderCategories();
     renderMenu();
     renderCart();
-    // ⭐ Profil ixtiyoriy - avtomatik yuklanmaydi
-    // loadUserProfile(); 
+    
+    // ⭐ CSS animatsiyalar uchun
+    addStyles();
   } catch (error) {
     console.error('Init xato:', error);
   }
+});
+
+// ⭐ QO'SHIMCHA STYLES
+function addStyles() {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translate(-50%, -100%); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.8); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+    @keyframes confetti-fall {
+      0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+// ⭐ SAHIFA YOPILGANDA POLLING TO'XTATISH
+window.addEventListener('beforeunload', () => {
+  stopPaymentPolling();
 });
