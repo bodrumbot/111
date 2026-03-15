@@ -132,6 +132,158 @@ function startPaymentPolling(orderId) {
   }, 5000);
 }
 
+// ⭐ YANGI: To'lovni backend ga xabar qilish
+async function notifyPaymentSuccess(orderId, transactionId) {
+  try {
+    console.log('📤 To\'lov muvaffaqiyatli - backend ga xabar yuborilmoqda:', { orderId, transactionId });
+    
+    const response = await fetch(`${SERVER_URL}/api/orders/${orderId}/payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'paid',
+        transactionId: transactionId || 'manual_' + Date.now()
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error('Backend xatosi: ' + response.status);
+    }
+    
+    const result = await response.json();
+    console.log('✅ Backend javob:', result);
+    return result;
+    
+  } catch (error) {
+    console.error('❌ To\'lov xabarini yuborishda xato:', error);
+    // Xatolik bo'lsa ham polling davom etadi
+    return null;
+  }
+}
+
+// ⭐ YANGI: Payme dan qaytishni tekshirish (window blur/focus)
+let paymentWindow = null;
+let paymentCheckInterval = null;
+
+function openPaymePayment(url, orderId) {
+  // Payme ni yangi oynada ochish
+  paymentWindow = window.open(url, '_blank');
+  
+  // Har 2 soniyada tekshirish - oyna yopilganmi
+  paymentCheckInterval = setInterval(async () => {
+    if (paymentWindow && paymentWindow.closed) {
+      console.log('💰 Payme oynasi yopildi - to\'lov tekshirilmoqda');
+      clearInterval(paymentCheckInterval);
+      
+      // Foydalanuvchidan so'rash
+      setTimeout(() => {
+        showPaymentConfirmDialog(orderId);
+      }, 1000);
+    }
+  }, 2000);
+  
+  // 5 daqiqadan keyin to'xtatish
+  setTimeout(() => {
+    if (paymentCheckInterval) {
+      clearInterval(paymentCheckInterval);
+    }
+  }, 5 * 60 * 1000);
+}
+
+// ⭐ YANGI: To'lov tasdiqlash dialogi
+function showPaymentConfirmDialog(orderId) {
+  const modal = document.createElement('div');
+  modal.id = 'paymentConfirmDialog';
+  modal.className = 'modal-overlay show';
+  modal.style.zIndex = '6000';
+  modal.innerHTML = `
+    <div class="modal-box confirm-dialog" style="text-align: center; max-width: 400px;">
+      <div style="
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, #00D084, #00b06b);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 50px;
+        margin: 0 auto 24px;
+        animation: scaleIn 0.5s ease;
+        box-shadow: 0 8px 32px rgba(0,208,132,0.3);
+      ">
+        💳
+      </div>
+      
+      <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 12px; color: #fff;">
+        To'lovni amalga oshirdingizmi?
+      </h2>
+      
+      <p style="color: #888; margin-bottom: 24px; font-size: 15px; line-height: 1.6;">
+        Agar Payme da to'lov muvaffaqiyatli bo'lgan bo'lsa, "Ha" tugmasini bosing.
+      </p>
+      
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <button onclick="confirmManualPayment('${orderId}')" style="
+          background: linear-gradient(135deg, #00D084, #00b06b);
+          color: #000;
+          border: none;
+          padding: 18px;
+          border-radius: 14px;
+          font-size: 16px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        ">
+          ✅ Ha, to'lov qildim
+        </button>
+        
+        <button onclick="cancelManualPayment()" style="
+          background: transparent;
+          color: #FF4757;
+          border: 2px solid rgba(255,71,87,0.3);
+          padding: 14px;
+          border-radius: 12px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+        ">
+          ❌ Yo'q, bekor qilish
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+}
+
+// ⭐ YANGI: Qo'lda to'lovni tasdiqlash
+window.confirmManualPayment = async function(orderId) {
+  // Dialogni yopish
+  const dialog = document.getElementById('paymentConfirmDialog');
+  if (dialog) dialog.remove();
+  
+  // Backend ga xabar yuborish
+  await notifyPaymentSuccess(orderId, 'manual_confirm_' + Date.now());
+  
+  // Polling ni to'xtatish va muvaffaqiyat ko'rsatish
+  stopPaymentPolling();
+  showPaymentSuccessModal({ order: { order_id: orderId, total: cart.reduce((s, i) => s + i.price * i.qty, 0) } });
+  
+  // Savatni tozalash
+  cart = [];
+  saveCartLS();
+  renderCart();
+};
+
+window.cancelManualPayment = function() {
+  const dialog = document.getElementById('paymentConfirmDialog');
+  if (dialog) dialog.remove();
+  
+  // Polling davom etadi
+  showNotification('To\'lov tekshirilmoqda...', 'info');
+};
+
+
 function stopPaymentPolling() {
   console.log('🛑 Polling to\'xtatildi');
   isPolling = false;
@@ -1272,10 +1424,10 @@ async function proceedToPayment(total) {
     const order = await response.json();
     console.log('✅ Buyurtma yaratildi:', order);
 
-    // 2. ⭐ FAQAT POLLING BOSHLASH - Payme callback yo'q!
+    // 2. Polling boshlash
     startPaymentPolling(orderId);
 
-    // 3. Payme ga yo'naltirish
+    // 3. Payme ni yangi oynada ochish (oqilona usul)
     const amountTiyin = Math.round(total * 100);
     const params = `m=${PAYME_MERCHANT_ID};ac.order_id=${orderId};a=${amountTiyin};cu=860`;
     const paramsB64 = btoa(params);
@@ -1283,10 +1435,13 @@ async function proceedToPayment(total) {
 
     console.log('💰 Payme URL:', paymeUrl);
 
+    // ⭐ YANGI: Yangi oynada ochish va kuzatish
     if (isTelegramWebApp && tg?.openLink) {
       tg.openLink(paymeUrl, { try_instant_view: false });
+      // Telegram da ochilganda, 10 soniyadan keyin so'rash
+      setTimeout(() => showPaymentConfirmDialog(orderId), 10000);
     } else {
-      window.open(paymeUrl, '_blank');
+      openPaymePayment(paymeUrl, orderId);
     }
 
   } catch (error) {
