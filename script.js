@@ -1,6 +1,6 @@
 // ==========================================
 // BODRUM - Universal Web App (WebApp + Sayt)
-// Payme avtomatik to'lov + POLLING tizimi
+// FAQAT POLLING TIZIMI - Payme callback O'CHIRILDI
 // ==========================================
 
 import { getMenuFromLocal, categories } from './menu.js';
@@ -34,7 +34,7 @@ let currentFoodItem = null;
 let userProfile = null;
 let userOrders = [];
 
-// ⭐ POLLING VARIABLES
+// ⭐ POLLING VARIABLES - FAQAT POLLING!
 let pollingInterval = null;
 let currentOrderId = null;
 let isPolling = false;
@@ -105,7 +105,7 @@ function showNotification(message, type = 'info') {
 }
 
 // ==========================================
-// ⭐ POLLING TO'LOV TEKSHIRUVI
+// ⭐ FAQAT POLLING - Payme callback yo'q!
 // ==========================================
 
 function startPaymentPolling(orderId) {
@@ -141,12 +141,13 @@ function stopPaymentPolling() {
     pollingInterval = null;
   }
   
-  // Modalni yopish
   closePaymentPendingModal();
 }
 
 async function checkPaymentStatus(orderId) {
   try {
+    // ⭐ FAQAT POLLING - Payme callback yo'q!
+    // Backend dan to'lov statusini so'rash
     const response = await fetch(`${SERVER_URL}/api/orders/${orderId}/payment-status`);
     const result = await response.json();
     
@@ -192,7 +193,6 @@ async function checkPaymentStatus(orderId) {
 // ==========================================
 
 function showPaymentPendingModal(orderId) {
-  // Avvalgi modalni o'chirish
   const existing = document.getElementById('paymentPendingModal');
   if (existing) existing.remove();
   
@@ -271,7 +271,6 @@ function showPaymentPendingModal(orderId) {
   
   document.body.appendChild(modal);
   
-  // Timer boshlash
   startPaymentTimer();
 }
 
@@ -407,17 +406,16 @@ function showPaymentSuccessModal(result) {
   
   document.body.appendChild(modal);
   
-  // Konfetti effekti
   createConfetti();
 }
 
-function closePaymentSuccessModal() {
+window.closePaymentSuccessModal = function() {
   const modal = document.getElementById('paymentSuccessModal');
   if (modal) {
     modal.classList.remove('show');
     setTimeout(() => modal.remove(), 300);
   }
-}
+};
 
 function showPaymentExpiredModal(orderId) {
   const modal = document.createElement('div');
@@ -472,13 +470,13 @@ function showPaymentExpiredModal(orderId) {
   document.body.appendChild(modal);
 }
 
-function closePaymentExpiredModal() {
+window.closePaymentExpiredModal = function() {
   const modal = document.getElementById('paymentExpiredModal');
   if (modal) {
     modal.classList.remove('show');
     setTimeout(() => modal.remove(), 300);
   }
-}
+};
 
 function createConfetti() {
   const colors = ['#FFD700', '#00D084', '#FF4757', '#FFA502', '#3498db'];
@@ -611,16 +609,14 @@ function showManualLocationInput() {
 }
 
 // ==========================================
-// PROFILE FUNCTIONS - UNIVERSAL (Majburiy emas)
+// PROFILE FUNCTIONS
 // ==========================================
 
 function generateUserId() {
-  // Telegram ID yoki generate qilingan ID
   if (isTelegramWebApp && tg.initDataUnsafe?.user?.id) {
     return 'tg_' + tg.initDataUnsafe.user.id;
   }
   
-  // LocalStorage dan olish yoki yangi yaratish
   let userId = localStorage.getItem('bodrum_user_id');
   if (!userId) {
     userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -657,11 +653,9 @@ function saveUserProfile(name, phone) {
   renderProfile();
 }
 
-// ⭐ UNIVERSAL PROFIL YUKLASH - Ixtiyoriy
 async function loadUserProfile() {
   console.log('🔍 Profil yuklanmoqda...');
   
-  // Avval localStorage dan tekshirish
   const savedName = getUserName();
   const savedPhone = getUserPhone();
   
@@ -677,7 +671,6 @@ async function loadUserProfile() {
     return;
   }
   
-  // Agar Telegram WebApp bo'lsa, serverdan tekshirish
   if (isTelegramWebApp) {
     try {
       const tgUser = tg.initDataUnsafe?.user;
@@ -706,7 +699,6 @@ async function loadUserProfile() {
         userProfile = result.profile;
         userOrders = result.orders || [];
         
-        // LocalStorage ga saqlash
         saveUserProfile(userProfile.name, userProfile.phone);
         renderProfile();
         renderOrdersList(userOrders);
@@ -718,7 +710,6 @@ async function loadUserProfile() {
       showProfileNotFound();
     }
   } else {
-    // Oddiy sayt rejimi - profil ixtiyoriy
     console.log('ℹ️ Sayt rejimi - profil ixtiyoriy');
     showProfileNotFound();
   }
@@ -766,7 +757,6 @@ function renderProfile() {
 
   updateProfileStats();
   
-  // Telefon yangilash tugmasini ko'rsatish
   const updateBtn = document.getElementById('updatePhoneBtn');
   if (updateBtn) {
     updateBtn.style.display = 'block';
@@ -810,7 +800,6 @@ function showProfileNotFound() {
   if (displayName) displayName.textContent = '---';
   if (displayPhone) displayPhone.textContent = '---';
 
-  // ⭐ Ixtiyoriy profil kiritish - majburiy emas
   const updateBtn = document.getElementById('updatePhoneBtn');
   if (updateBtn) {
     updateBtn.style.display = 'block';
@@ -818,7 +807,6 @@ function showProfileNotFound() {
   }
 }
 
-// ⭐ PROFIL KIRITISH MODALI (IXTIYORIY)
 window.showProfileInputModal = function() {
   const existing = document.getElementById('profileInputModal');
   if (existing) existing.remove();
@@ -853,14 +841,12 @@ window.saveProfileFromInput = function() {
   const name = nameInput?.value?.trim();
   let phone = phoneInput?.value?.trim();
   
-  // ⭐ Validatsiya - lekin majburiy emas
   if (!name && !phone) {
     closeProfileInputModal();
     return;
   }
   
   if (phone) {
-    // Telefon formatini tozalash
     phone = phone.replace(/\D/g, '');
     if (phone.startsWith('998')) phone = phone.substring(3);
     if (phone.startsWith('+998')) phone = phone.substring(4);
@@ -880,7 +866,6 @@ window.closeProfileInputModal = function() {
   if (modal) modal.remove();
 };
 
-// Telefon raqamni yangilash
 window.requestContact = function() {
   if (isTelegramWebApp && tg.requestContact) {
     tg.requestContact((result) => {
@@ -1223,7 +1208,7 @@ window.switchTab = function(tabName) {
 };
 
 // ==========================================
-// PAYMENT & ORDER - POLLING TIZIMI
+// ⭐ FAQAT POLLING - Payme callback O'CHIRILDI
 // ==========================================
 
 document.getElementById('orderBtn').addEventListener('click', async () => {
@@ -1234,23 +1219,15 @@ document.getElementById('orderBtn').addEventListener('click', async () => {
 
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
-  // ⭐ PROFIL IXTIVORIY - Agar yo'q bo'lsa default qiymatlar
-  if (!userProfile || !userProfile.phone) {
-    console.log('ℹ️ Profil yo\'q, default qiymatlar bilan davom etish');
-  }
-
-  // Joylashuv tekshiruvi
   if (!currentLocation) {
     showLocationRequestModal();
     return;
   }
 
-  // Joylashuv bor - to'lovga o'tish
   proceedToPayment(total);
 });
 
 async function proceedToPayment(total) {
-  // ⭐ DEFAULT QIYMATLAR - agar profil yo'q bo'lsa
   const orderId = 'ORD_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   
   const customerName = userProfile?.name || 'Mijoz';
@@ -1295,7 +1272,7 @@ async function proceedToPayment(total) {
     const order = await response.json();
     console.log('✅ Buyurtma yaratildi:', order);
 
-    // 2. ⭐ POLLING BOSHLASH
+    // 2. ⭐ FAQAT POLLING BOSHLASH - Payme callback yo'q!
     startPaymentPolling(orderId);
 
     // 3. Payme ga yo'naltirish
@@ -1306,7 +1283,6 @@ async function proceedToPayment(total) {
 
     console.log('💰 Payme URL:', paymeUrl);
 
-    // ⭐ TELEGRAM WEBAPP yoki ODDIY SAYT
     if (isTelegramWebApp && tg?.openLink) {
       tg.openLink(paymeUrl, { try_instant_view: false });
     } else {
@@ -1327,7 +1303,7 @@ async function proceedToPayment(total) {
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🚀 DOMContentLoaded - BODRUM Universal WebApp');
   console.log('📱 Mode:', isTelegramWebApp ? 'Telegram WebApp' : 'Regular Website');
-  console.log('⏰ Polling tizimi faollashdi');
+  console.log('⏰ FAQAT POLLING tizimi faollashdi - Payme callback yo\'q!');
 
   try {
     loadCartLS();
@@ -1335,14 +1311,12 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMenu();
     renderCart();
     
-    // ⭐ CSS animatsiyalar uchun
     addStyles();
   } catch (error) {
     console.error('Init xato:', error);
   }
 });
 
-// ⭐ QO'SHIMCHA STYLES
 function addStyles() {
   const style = document.createElement('style');
   style.textContent = `
@@ -1370,7 +1344,6 @@ function addStyles() {
   document.head.appendChild(style);
 }
 
-// ⭐ SAHIFA YOPILGANDA POLLING TO'XTATISH
 window.addEventListener('beforeunload', () => {
   stopPaymentPolling();
 });
