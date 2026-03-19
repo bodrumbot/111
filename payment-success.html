@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>To'lov - BODRUM</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, sans-serif; }
+    body {
+      background: #0a0a0a;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+    }
+    .icon {
+      width: 100px;
+      height: 100px;
+      background: linear-gradient(135deg, #FFD700, #D4AF37);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 50px;
+      margin-bottom: 24px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    h1 { font-size: 24px; margin-bottom: 12px; color: #FFD700; }
+    p { color: #888; margin-bottom: 24px; font-size: 16px; }
+    .btn {
+      background: linear-gradient(135deg, #FFD700, #D4AF37);
+      color: #000;
+      border: none;
+      padding: 16px 32px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="icon">✅</div>
+  <h1>To'lov muvaffaqiyatli!</h1>
+  <p>Buyurtmangiz qabul qilindi. Tez orada yetkazib beramiz!</p>
+  <button class="btn" onclick="closeApp()">Yopish</button>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get('order_id');
+    
+    // LocalStorage ga saqlash (asosiy sahifa tekshirishi uchun)
+    if (orderId) {
+      localStorage.setItem('bodrum_last_order', JSON.stringify({
+        orderId: orderId,
+        paid: true,
+        time: Date.now()
+      }));
+    }
+    
+    function closeApp() {
+      if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.close();
+      } else {
+        window.close();
+      }
+    }
+    
+    // Avtomatik yopish (5 soniya)
+    setTimeout(closeApp, 5000);
+  </script>
+</body>
+</html>
