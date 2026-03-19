@@ -1,7 +1,6 @@
 // ==========================================
-// BODRUM - FAQAT TELEGRAM WEBAPP
-// Sayt orqali buyurtma berish O'CHIRILDI
-// Eski tekshiruvlar O'CHIRILDI
+// BODRUM - TO'LOVDAN KEYIN ADMIN GA XABAR
+// Buyurtma tugmasi bosilganda faqat to'lovga yo'naltiradi
 // ==========================================
 
 import { getMenuFromLocal, categories } from './menu.js';
@@ -14,7 +13,7 @@ import { getProfileDB, saveProfileDB, addOrderDB, getOrdersDB } from './db.js';
 let tg = null;
 let isTelegramWebApp = false;
 
-// Telegram WebApp tekshirish - AGAR TELEGRAM BO'LMASA, ISHLAMAYDI
+// Telegram WebApp tekshirish
 if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
   tg = window.Telegram.WebApp;
   isTelegramWebApp = true;
@@ -24,7 +23,6 @@ if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData
   console.log('✅ Telegram WebApp detected');
 } else {
   console.log('❌ Faqat Telegram WebApp orqali ishlaydi!');
-  // Sayt rejimida xabar ko'rsatish
   document.addEventListener('DOMContentLoaded', () => {
     showTelegramOnlyModal();
   });
@@ -58,7 +56,7 @@ const displayName = document.getElementById('displayName');
 const displayPhone = document.getElementById('displayPhone');
 
 // ==========================================
-// TELEGRAM ONLY MODAL - Sayt uchun
+// TELEGRAM ONLY MODAL
 // ==========================================
 
 function showTelegramOnlyModal() {
@@ -205,11 +203,9 @@ function getUserPhone() {
 }
 
 // ==========================================
-// TO'LOV TIZIMI - SODDA QILINDI
+// ⭐ YANGI: TO'LOV JARAYONI - BUYURTMA YARATMAYDI
+// Faqat Payme checkout ga yo'naltiradi
 // ==========================================
-
-// ⭐ ESKI MURAKKAB TEKSHIRUVLAR O'CHIRILDI
-// Faqat to'lovni boshlash va redirect qilish
 
 async function startPaymentProcess() {
   if (!isTelegramWebApp) {
@@ -229,13 +225,6 @@ async function startPaymentProcess() {
     return;
   }
   
-  // Profilni yangilash
-  userProfile = {
-    name: customerInfo.name,
-    phone: customerInfo.phone,
-    user_id: getUserId()
-  };
-  
   // Joylashuv tekshiruvi
   if (!currentLocation) {
     showLocationRequestModal();
@@ -243,67 +232,106 @@ async function startPaymentProcess() {
   }
   
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  
+  // ⭐ FAQAT TO'LOV LINKINI YARATISH - BUYURTMA YARATMAYDI
   const orderId = 'ORD_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   
+  // Ma'lumotlarni saqlash (to'lov qilinganidan keyin buyurtma yaratish uchun)
+  const pendingOrder = {
+    orderId: orderId,
+    name: customerInfo.name,
+    phone: customerInfo.phone,
+    items: cart.map(item => ({
+      name: item.name,
+      price: item.price,
+      qty: item.qty
+    })),
+    total: total,
+    location: currentLocation.lat ? `${currentLocation.lat},${currentLocation.lng}` : currentLocation.address,
+    tgId: getUserId(),
+    source: 'webapp',
+    createdAt: Date.now()
+  };
+  
+  // LocalStorage ga vaqtinchalik saqlash
+  localStorage.setItem('bodrum_pending_order', JSON.stringify(pendingOrder));
+  
+  // Payme checkout URL
+  const callbackUrl = encodeURIComponent(
+    `${window.location.origin}/payment-success.html?order_id=${orderId}&amount=${total}`
+  );
+  const amountTiyin = Math.round(total * 100);
+  const params = `m=${PAYME_MERCHANT_ID};ac.order_id=${orderId};a=${amountTiyin};cu=860;cb=${callbackUrl}`;
+  const paramsB64 = btoa(params);
+  const paymeUrl = `${PAYME_CHECKOUT_URL}/${paramsB64}`;
+  
+  // Payme ni ochish
+  tg.openLink(paymeUrl, { try_instant_view: false });
+  
+  showNotification('💳 Payme da to\'lovni amalga oshiring', 'info');
+  
+  // Savatni tozalash
+  cart = [];
+  saveCartLS();
+  renderCart();
+}
+
+// ⭐ YANGI: TO'LOV QILINGANIDAN KEYIN BUYURTMA YARATISH
+// payment-success.html dan chaqiriladi
+window.createOrderAfterPayment = async function(orderId) {
+  const pendingData = localStorage.getItem('bodrum_pending_order');
+  if (!pendingData) {
+    console.error('❌ Pending order topilmadi');
+    return null;
+  }
+  
   try {
-    const orderData = {
-      orderId: orderId,
-      name: userProfile.name,
-      phone: userProfile.phone,
-      items: cart.map(item => ({
-        name: item.name,
-        price: item.price,
-        qty: item.qty
-      })),
-      total: total,
-      status: 'pending_payment',
-      paymentStatus: 'pending',
-      paymentMethod: 'payme',
-      location: currentLocation.lat ? `${currentLocation.lat},${currentLocation.lng}` : currentLocation.address,
-      tgId: getUserId(),
-      source: 'webapp'
-    };
+    const order = JSON.parse(pendingData);
     
-    // Buyurtma yaratish
+    // Agar orderId mos kelmasa, xatolik
+    if (order.orderId !== orderId) {
+      console.error('❌ Order ID mos kelmadi');
+      return null;
+    }
+    
+    // Endi buyurtma yaratish va backend ga yuborish
     const response = await fetch(`${SERVER_URL}/api/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(orderData)
+      body: JSON.stringify({
+        ...order,
+        status: 'pending_payment', // To'lov qilingan, lekin admin tasdig'i kutilmoqda
+        paymentStatus: 'paid'
+      })
     });
     
     if (!response.ok) {
       throw new Error('Buyurtma yaratish xatosi');
     }
     
-    // ⭐ ESKI POLLING VA TEKSHIRUVLAR O'CHIRILDI
-    // To'lovni boshlash va Telegram ichida ochish
+    const result = await response.json();
     
-    const callbackUrl = encodeURIComponent(
-      `${window.location.origin}/payment-success.html?order_id=${orderId}&amount=${total}`
-    );
-    const amountTiyin = Math.round(total * 100);
-    const params = `m=${PAYME_MERCHANT_ID};ac.order_id=${orderId};a=${amountTiyin};cu=860;cb=${callbackUrl}`;
-    const paramsB64 = btoa(params);
-    const paymeUrl = `${PAYME_CHECKOUT_URL}/${paramsB64}`;
+    // LocalStorage dan o'chirish
+    localStorage.removeItem('bodrum_pending_order');
     
-    // ⭐ SODDA: Faqat Payme ni ochish, boshqa tekshiruv yo'q
-    tg.openLink(paymeUrl, { try_instant_view: false });
+    // Buyurtma tarixiga qo'shish
+    await addOrderDB({
+      text: `Buyurtma #${orderId.slice(-6)}`,
+      date: new Date().toISOString(),
+      total: order.total,
+      items: order.items
+    });
     
-    // Savatni tozalash
-    cart = [];
-    saveCartLS();
-    renderCart();
+    showNotification('✅ Buyurtma qabul qilindi!', 'success');
     
-    showNotification('💳 Payme da to\'lovni amalga oshiring', 'info');
-    
-    // ➡️ TELEGRAM WEBAPP ni yopish (ixtiyoriy)
-    // setTimeout(() => tg.close(), 2000);
+    return result;
     
   } catch (error) {
-    console.error('❌ To\'lov xatosi:', error);
-    showNotification('Xatolik: ' + error.message, 'error');
+    console.error('❌ Buyurtma yaratish xatosi:', error);
+    showNotification('Xatolik yuz berdi', 'error');
+    return null;
   }
-}
+};
 
 // ==========================================
 // LOCATION FUNCTIONS
@@ -1016,11 +1044,10 @@ document.getElementById('orderBtn').addEventListener('click', () => {
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 DOMContentLoaded - BODRUM Telegram WebApp Only');
+  console.log('🚀 DOMContentLoaded - BODRUM (To\'lovdan keyin buyurtma)');
   console.log('📱 Mode:', isTelegramWebApp ? 'Telegram WebApp' : 'Sayt (bloklangan)');
   
   if (!isTelegramWebApp) {
-    // Sayt rejimida faqat xabar ko'rsatish
     return;
   }
 
