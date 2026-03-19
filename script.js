@@ -85,7 +85,7 @@ function showTelegramOnlyModal() {
       BODRUM buyurtma berish faqat <b>Telegram</b> orqali amalga oshiriladi.
       Iltimos, botga o'ting:
     </p>
-    <a href="https://t.me/bodrum_tashkent_bot" target="_blank" style="
+    <a href="https://t.me/Bodrumdelivery_bot" target="_blank" style="
       background: linear-gradient(135deg, #FFD700, #D4AF37);
       color: #000;
       padding: 16px 32px;
