@@ -87,15 +87,20 @@ async function checkNewOrders() {
 
 async function loadOrders() {
   try {
-    // Faqat 'accepted' buyurtmalarni olish
+    // Faqat 'accepted' va 'pending_payment' (to'lov qilingan lekin tasdiqlanmagan) buyurtmalarni olish
     const response = await fetch(`${SERVER_URL}/api/orders`);
     const data = await response.json();
     
+    // Faqat to'lov qilingan yoki qabul qilingan buyurtmalarni ko'rsatish
     orders = data.map(order => ({
       firebaseKey: order.orderId || order.order_id,
       ...order
-    })).sort((a, b) => {
-      // accepted_at bo'yicha sortlash
+    })).filter(order => {
+      // Faqat to'lov qilingan (payment_status = paid) yoki qabul qilinganlar
+      const paymentStatus = order.paymentStatus || order.payment_status;
+      const status = order.status;
+      return paymentStatus === 'paid' || status === 'accepted' || status === 'confirmed';
+    }).sort((a, b) => {
       const dateA = new Date(a.acceptedAt || a.accepted_at || a.createdAt || a.created_at);
       const dateB = new Date(b.acceptedAt || b.accepted_at || b.createdAt || b.created_at);
       return dateB - dateA;
