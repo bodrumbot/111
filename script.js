@@ -232,12 +232,10 @@ async function startPaymentProcess() {
   }
   
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  
-  // ⭐ FAQAT TO'LOV LINKINI YARATISH - BUYURTMA YARATMAYDI
   const orderId = 'ORD_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   
-  // Ma'lumotlarni saqlash (to'lov qilinganidan keyin buyurtma yaratish uchun)
-  const pendingOrder = {
+  // ⭐ YANGI: Avval buyurtma yaratish (admin hali ko'rmaydi)
+  const orderData = {
     orderId: orderId,
     name: customerInfo.name,
     phone: customerInfo.phone,
@@ -250,11 +248,40 @@ async function startPaymentProcess() {
     location: currentLocation.lat ? `${currentLocation.lat},${currentLocation.lng}` : currentLocation.address,
     tgId: getUserId(),
     source: 'webapp',
-    createdAt: Date.now()
+    status: 'pending_payment',
+    paymentStatus: 'pending',
+    paymentMethod: 'payme'
   };
   
-  // LocalStorage ga vaqtinchalik saqlash
-  localStorage.setItem('bodrum_pending_order', JSON.stringify(pendingOrder));
+  // Backend ga yuborish (adminga xabar ketmaydi)
+  try {
+    showNotification('⏳ Buyurtma saqlanmoqda...', 'info');
+    
+    const response = await fetch(`${SERVER_URL}/api/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderData)
+    });
+    
+    if (!response.ok) {
+      throw new Error('Buyurtma yaratish xatosi');
+    }
+    
+    const result = await response.json();
+    console.log('✅ Buyurtma yaratildi (kutilmoqda):', result);
+    
+  } catch (error) {
+    console.error('❌ Buyurtma yaratish xatosi:', error);
+    showNotification('Xatolik yuz berdi, qayta urinib ko\'ring', 'error');
+    return;
+  }
+  
+  // Payme uchun ma'lumotlarni saqlash (agar kerak bo'lsa)
+  localStorage.setItem('bodrum_pending_order', JSON.stringify({
+    orderId: orderId,
+    total: total,
+    createdAt: Date.now()
+  }));
   
   // Payme checkout URL
   const callbackUrl = encodeURIComponent(
