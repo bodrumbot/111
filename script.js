@@ -207,6 +207,10 @@ function getUserPhone() {
 // Faqat Payme checkout ga yo'naltiradi
 // ==========================================
 
+// ==========================================
+// BUYURTMA BERISH - PAYME GA O'TISH + ADMIN GA XABAR
+// ==========================================
+
 async function startPaymentProcess() {
   if (!isTelegramWebApp) {
     showNotification('Faqat Telegram orqali!', 'error');
@@ -234,7 +238,7 @@ async function startPaymentProcess() {
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const orderId = 'ORD_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   
-  // ✅ 1. DARHOL BUYURTMA YARATISH (to'lovni tekshirmasdan)
+  // 1. DARHOL BUYURTMA YARATISH (to'lovni tekshirmasdan)
   const orderData = {
     orderId: orderId,
     name: customerInfo.name,
@@ -248,7 +252,7 @@ async function startPaymentProcess() {
     location: currentLocation.lat ? `${currentLocation.lat},${currentLocation.lng}` : currentLocation.address,
     tgId: getUserId(),
     source: 'webapp',
-    status: 'pending',  // To'lov tekshirilmagan
+    status: 'pending',
     paymentStatus: 'pending',
     paymentMethod: 'payme'
   };
@@ -269,39 +273,116 @@ async function startPaymentProcess() {
     const result = await response.json();
     console.log('✅ Buyurtma yaratildi:', result);
     
-    // ✅ 2. DARHOL ADMINGA XABAR YUBORISH (backend orqali)
-    // Backend avtomatik admin ga xabar yuboradi
+    // 2. DARHOL ADMINGA XABAR YUBORISH - backend orqali
+    // Backend avtomatik admin ga xabar yuboradi (notify_admin_new_order)
     
-    // ✅ 3. PAYME GA O'TISH
-    const paymeUrl = `${PAYME_CHECKOUT_URL}/${PAYME_MERCHANT_ID}?orderId=${orderId}&amount=${total * 100}`;
+    // ✅ 3. PAYME GA O'TISH - TO'G'RILANGAN
+    const paymeUrl = `https://checkout.payme.uz/${PAYME_MERCHANT_ID}?orderId=${orderId}&amount=${total * 100}`;
     
-    // Payme ga o'tish
-    if (tg.openInvoice) {
-      tg.openInvoice(paymeUrl, (status) => {
-        console.log('Payme status:', status);
-        // To'lov statusini tekshirmaymiz!
-        // Mijoz qaytib kelganda qo'lda tekshiradi
-      });
-    } else {
-      // Oddiy link orqali o'tish
-      tg.openLink(paymeUrl, { try_instant_view: false });
+    console.log('🔗 Payme URL:', paymeUrl);
+    
+    // Payme ga o'tish - bir necha usul bilan
+    try {
+      // Usul 1: tg.openLink (Telegram WebApp ichida)
+      if (tg.openLink) {
+        tg.openLink(paymeUrl, { try_instant_view: false });
+        console.log('✅ tg.openLink ishlatildi');
+      } 
+      // Usul 2: window.open (yangi tabda)
+      else if (window.open) {
+        window.open(paymeUrl, '_blank');
+        console.log('✅ window.open ishlatildi');
+      }
+      // Usul 3: location.href (shu sahifada)
+      else {
+        window.location.href = paymeUrl;
+        console.log('✅ location.href ishlatildi');
+      }
+    } catch (e) {
+      console.error('❌ Payme ga o\'tish xatosi:', e);
+      // Agar ochilmasa, link ni ko'rsatish
+      showPaymeLinkModal(paymeUrl);
     }
     
-    showNotification('✅ Buyurtma yuborildi! To\'lovni amalga oshiring.', 'success');
+    showNotification('✅ Buyurtma yuborildi! To\'lov sahifasiga o\'tildi.', 'success');
     
     // Savatni tozalash
     cart = [];
     saveCartLS();
     renderCart();
     
-    // Profilga o'tish
-    setTimeout(() => switchTab('profile'), 2000);
+    // Profilga o'tish (biroz kutib)
+    setTimeout(() => switchTab('profile'), 3000);
     
   } catch (error) {
     console.error('❌ Buyurtma yaratish xatosi:', error);
     showNotification('Xatolik yuz berdi, qayta urinib ko\'ring', 'error');
   }
 }
+
+// ✅ YANGI: Agar Payme ochilmasa, link ni ko'rsatish
+function showPaymeLinkModal(paymeUrl) {
+  // Eski modal ni o'chirish
+  const existing = document.getElementById('paymeLinkModal');
+  if (existing) existing.remove();
+  
+  const modal = document.createElement('div');
+  modal.id = 'paymeLinkModal';
+  modal.className = 'modal-overlay show';
+  modal.style.zIndex = '5000';
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width: 400px; text-align: center; padding: 32px 24px;">
+      <div style="font-size: 60px; margin-bottom: 20px;">💳</div>
+      <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #fff;">
+        To'lovni amalga oshiring
+      </h2>
+      <p style="color: #888; margin-bottom: 24px; font-size: 14px; line-height: 1.6;">
+        Payme orqali to'lovni amalga oshirish uchun quyidagi tugmani bosing:
+      </p>
+      
+      <a href="${paymeUrl}" target="_blank" style="
+        display: block;
+        width: 100%;
+        background: linear-gradient(135deg, #FFD700, #D4AF37);
+        color: #000;
+        padding: 18px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 800;
+        font-size: 16px;
+        margin-bottom: 16px;
+      ">
+        💳 Payme ga o'tish
+      </a>
+      
+      <button onclick="closePaymeLinkModal()" style="
+        width: 100%;
+        background: transparent;
+        color: #888;
+        border: 2px solid rgba(255,255,255,0.1);
+        padding: 14px;
+        border-radius: 12px;
+        font-size: 14px;
+        cursor: pointer;
+      ">
+        Keyinroq to'layman
+      </button>
+      
+      <div style="margin-top: 20px; padding: 12px; background: rgba(255,215,0,0.1); border-radius: 8px;">
+        <p style="font-size: 12px; color: #FFD700; margin: 0;">
+          ⚠️ To'lovni amalga oshirgach, buyurtma avtomatik qabul qilinadi
+        </p>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+}
+
+window.closePaymeLinkModal = function() {
+  const modal = document.getElementById('paymeLinkModal');
+  if (modal) modal.remove();
+};
 
 function showLocationRequestModal() {
   const modal = document.getElementById('locationRequestModal');
