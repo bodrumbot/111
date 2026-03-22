@@ -31,7 +31,6 @@ if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData
 const SERVER_URL = 'https://backend-production-1bf4.up.railway.app';
 const PAYME_MERCHANT_ID = '698d8268f7c89c2bb7cfc08e';
 const PAYME_CHECKOUT_URL = 'https://checkout.payme.uz';
-const PAYME_BASE_URL = 'https://payme.uz/checkout'; 
 
 const menu = getMenuFromLocal();
 let cart = [];
@@ -144,6 +143,44 @@ function showNotification(message, type = 'info') {
   document.body.appendChild(div);
   setTimeout(() => div.remove(), 4000);
 }
+
+// ==========================================
+// ⭐⭐⭐ PAYME URL GENERATOR - TO'G'RI FORMAT
+// ==========================================
+
+/**
+ * Payme checkout URL yaratish
+ * Format: https://checkout.payme.uz/base64(m=merchant_id;ac.order_id=xxx;a=amount)
+ * 
+ * @param {string} orderId - Buyurtma ID
+ * @param {number} amount - Summa SO'M da (tiyin emas!)
+ * @returns {string} - To'liq Payme URL
+ */
+function generatePaymeUrl(orderId, amount) {
+  // Summa tiyinga o'tkazish (1 so'm = 100 tiyin)
+  const amountInTiyin = Math.round(amount * 100);
+  
+  // Parametrlarni yaratish (nuqtali vergul bilan ajratilgan)
+  // Format: m=merchant_id;ac.order_id=order_id;a=amount
+  const params = `m=${PAYME_MERCHANT_ID};ac.order_id=${orderId};a=${amountInTiyin}`;
+  
+  // Base64 encode
+  const base64Params = btoa(params);
+  
+  // To'liq URL
+  const paymeUrl = `${PAYME_CHECKOUT_URL}/${base64Params}`;
+  
+  console.log('🔗 Payme URL yaratildi:');
+  console.log('   Parametrlar:', params);
+  console.log('   Base64:', base64Params);
+  console.log('   URL:', paymeUrl);
+  
+  return paymeUrl;
+}
+
+// Test qilish
+console.log('🧪 Payme URL test:');
+console.log(generatePaymeUrl('TEST_123', 50000)); // 50,000 so'm
 
 // ==========================================
 // MIJOZ MA'LUMOTLARI
@@ -265,16 +302,10 @@ async function startPaymentProcess() {
     const result = await response.json();
     console.log('✅ Buyurtma yaratildi:', result);
     
-    // ✅ 2. TO'G'RI PAYME URL YARATISH
-    // Summa tiyinda (so'm * 100)
-    const amountInTiyin = total * 100;
+    // ⭐⭐⭐ TO'G'RI PAYME URL YARATISH
+    const paymeUrl = generatePaymeUrl(orderId, total);
     
-    // ⭐⭐⭐ TO'G'RI PAYME URL
-    const paymeUrl = `${PAYME_BASE_URL}/${PAYME_MERCHANT_ID}?amount=${amountInTiyin}&orderId=${orderId}`;
-    
-    console.log('🔗 Payme URL:', paymeUrl);
-    
-    // ✅ 3. PAYME GA O'TISH
+    // ✅ 2. PAYME GA O'TISH
     openPaymeLink(paymeUrl);
     
     showNotification('✅ Buyurtma yuborildi! To\'lov sahifasiga o\'tildi.', 'success');
@@ -346,7 +377,7 @@ function openPaymeLink(paymeUrl) {
 // AGAR OCHILMASA - MANUAL LINK MODAL
 // ==========================================
 
-function showPaymeLinkModal(paymeUrl) {
+function showPaymeLinkModal(paymeUrl, amount) {
   const existing = document.getElementById('paymeLinkModal');
   if (existing) existing.remove();
   
@@ -385,7 +416,7 @@ function showPaymeLinkModal(paymeUrl) {
       <div style="background: rgba(255,215,0,0.1); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
         <p style="font-size: 12px; color: #FFD700; margin: 0 0 8px 0;">Summa:</p>
         <p style="font-size: 28px; font-weight: 800; color: #FFD700; margin: 0;">
-          ${cart.reduce((s, i) => s + i.price * i.qty, 0).toLocaleString()} so'm
+          ${amount.toLocaleString()} so'm
         </p>
       </div>
       
@@ -428,11 +459,6 @@ function showPaymeLinkModal(paymeUrl) {
   
   document.body.appendChild(modal);
 }
-
-window.closePaymeLinkModal = function() {
-  const modal = document.getElementById('paymeLinkModal');
-  if (modal) modal.remove();
-};
 
 window.closePaymeLinkModal = function() {
   const modal = document.getElementById('paymeLinkModal');
