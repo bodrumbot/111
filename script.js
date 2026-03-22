@@ -234,7 +234,7 @@ async function startPaymentProcess() {
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const orderId = 'ORD_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   
-  // ✅ YANGI: Darhol buyurtma yaratish (to'lovni tekshirmasdan)
+  // ✅ 1. DARHOL BUYURTMA YARATISH (to'lovni tekshirmasdan)
   const orderData = {
     orderId: orderId,
     name: customerInfo.name,
@@ -269,10 +269,25 @@ async function startPaymentProcess() {
     const result = await response.json();
     console.log('✅ Buyurtma yaratildi:', result);
     
-    // ✅ YANGI: Backend avtomatik admin ga xabar yuboradi
-    // To'lov tekshiruvi yo'q!
+    // ✅ 2. DARHOL ADMINGA XABAR YUBORISH (backend orqali)
+    // Backend avtomatik admin ga xabar yuboradi
     
-    showNotification('✅ Buyurtma qabul qilindi! Admin tez orada to\'lovni tekshiradi.', 'success');
+    // ✅ 3. PAYME GA O'TISH
+    const paymeUrl = `${PAYME_CHECKOUT_URL}/${PAYME_MERCHANT_ID}?orderId=${orderId}&amount=${total * 100}`;
+    
+    // Payme ga o'tish
+    if (tg.openInvoice) {
+      tg.openInvoice(paymeUrl, (status) => {
+        console.log('Payme status:', status);
+        // To'lov statusini tekshirmaymiz!
+        // Mijoz qaytib kelganda qo'lda tekshiradi
+      });
+    } else {
+      // Oddiy link orqali o'tish
+      tg.openLink(paymeUrl, { try_instant_view: false });
+    }
+    
+    showNotification('✅ Buyurtma yuborildi! To\'lovni amalga oshiring.', 'success');
     
     // Savatni tozalash
     cart = [];
@@ -280,7 +295,7 @@ async function startPaymentProcess() {
     renderCart();
     
     // Profilga o'tish
-    setTimeout(() => switchTab('profile'), 1500);
+    setTimeout(() => switchTab('profile'), 2000);
     
   } catch (error) {
     console.error('❌ Buyurtma yaratish xatosi:', error);
