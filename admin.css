@@ -1472,3 +1472,7 @@ body {
   background: var(--gold-primary);
   color: #000;
 }
+
+.location-badge {
+  display: none !important;
+}
