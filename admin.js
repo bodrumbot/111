@@ -87,22 +87,21 @@ async function checkNewOrders() {
 
 async function loadOrders() {
   try {
-    // Faqat 'accepted' va 'pending_payment' (to'lov qilingan lekin tasdiqlanmagan) buyurtmalarni olish
+    // ⭐ BARCHA BUYURTMALARNI OLIB QAYTARISH (/api/orders/new o'rniga)
     const response = await fetch(`${SERVER_URL}/api/orders`);
     const data = await response.json();
     
-    // Faqat to'lov qilingan yoki qabul qilingan buyurtmalarni ko'rsatish
+    console.log('📦 Yuklangan buyurtmalar soni:', data.length);
+    console.log('📊 Statuslar:', data.map(o => o.status || o.payment_status));
+    
+    // Barcha buyurtmalarni saqlash
     orders = data.map(order => ({
       firebaseKey: order.orderId || order.order_id,
       ...order
-    })).filter(order => {
-      // Faqat to'lov qilingan (payment_status = paid) yoki qabul qilinganlar
-      const paymentStatus = order.paymentStatus || order.payment_status;
-      const status = order.status;
-      return paymentStatus === 'paid' || status === 'accepted' || status === 'confirmed';
-    }).sort((a, b) => {
-      const dateA = new Date(a.acceptedAt || a.accepted_at || a.createdAt || a.created_at);
-      const dateB = new Date(b.acceptedAt || b.accepted_at || b.createdAt || b.created_at);
+    })).sort((a, b) => {
+      // Yangi buyurtmalar birinchi (created_at bo'yicha)
+      const dateA = new Date(a.createdAt || a.created_at || 0);
+      const dateB = new Date(b.createdAt || b.created_at || 0);
       return dateB - dateA;
     });
     
@@ -115,16 +114,310 @@ async function loadOrders() {
   }
 }
 
-// ==========================================
-// RENDER ORDERS - FAQAT QABUL QILINGANLAR
-// ==========================================
+
+
+function createOrderCard(order, index, displayStatus) {
+  const date = new Date(order.createdAt || order.created_at || Date.now());
+  const time = date.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+  const dateStr = date.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit' });
+  
+  // Status aniqlash
+  const realStatus = order.status || order.payment_status || 'unknown';
+  
+  let itemsText = '';
+  if (order.items && Array.isArray(order.items)) {
+    itemsText = order.items.map(i => `${i.name} x${i.qty}`).join(', ');
+  } else if (typeof order.items === 'string') {
+    try {
+      const parsed = JSON.parse(order.items);
+      itemsText = parsed.map(i => `${i.name} x${i.qty}`).join(', ');
+    } catch (e) {
+      itemsText = order.items;
+    }
+  }
+  
+  const hasScreenshot = order.screenshot ? true : false;
+  const hasLocation = order.location ? true : false;
+  
+  // Statusga mos rang va badge
+  let statusColor, statusBadge, cardClass;
+  switch(realStatus) {
+    case 'pending':
+    case 'pending_payment':
+      statusColor = '#FFA502';
+      statusBadge = '⏳ Kutilmoqda';
+      cardClass = 'pending';
+      break;
+    case 'accepted':
+    case 'confirmed':
+    case 'paid':
+      statusColor = '#00D084';
+      statusBadge = '✅ Qabul qilingan';
+      cardClass = 'accepted';
+      break;
+    case 'rejected':
+      statusColor = '#FF4757';
+      statusBadge = '❌ Bekor qilingan';
+      cardClass = 'rejected';
+      break;
+    default:
+      statusColor = '#888';
+      statusBadge = '❓ Noma\'lum';
+      cardClass = '';
+  }
+  
+  return `
+    <div class="order-card ${cardClass}" data-id="${order.firebaseKey}" data-status="${realStatus}" 
+         style="animation: slideIn 0.4s ease ${index * 0.05}s backwards; border-left: 4px solid ${statusColor};">
+      ${hasScreenshot ? '<div class="screenshot-badge">📸</div>' : ''}
+      ${hasLocation ? '<div class="location-badge">📍</div>' : ''}
+      <div class="order-header">
+        <span class="order-id">#${(order.order_id || order.orderId || 'N/A').slice(-6)}</span>
+        <span class="order-time">${dateStr} ${time}</span>
+      </div>
+      <div class="order-customer">${order.name || "Noma'lum"}</div>
+      <div class="order-phone">+998 ${order.phone || '---'}</div>
+      <div class="order-items-preview">${itemsText}</div>
+      <div class="order-footer">
+        <span class="order-total">${(order.total || 0).toLocaleString()} so'm</span>
+        <span class="order-status" style="background: ${statusColor}20; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700;">
+          ${statusBadge}
+        </span>
+      </div>
+    </div>
+  `;
+}
+
+// ⭐⭐⭐ MODAL - BARCHA STATUSLAR UCHUN TUGMALAR
+window.openOrderModal = async function(orderId) {
+  const order = orders.find(o => o.firebaseKey === orderId);
+  if (!order) return;
+  
+  currentOrderKey = orderId;
+  const realStatus = order.status || order.payment_status || 'unknown';
+  
+  document.getElementById('modalOrderId').textContent = (order.order_id || order.orderId || 'N/A').slice(-6);
+  document.getElementById('modalCustomer').textContent = order.name || 'Noma\'lum';
+  document.getElementById('modalPhone').textContent = '+998 ' + (order.phone || '---');
+  document.getElementById('modalTotal').textContent = (order.total || 0).toLocaleString() + ' so\'m';
+  
+  // Joylashuv
+  const locationRow = document.getElementById('locationRow');
+  const modalLocation = document.getElementById('modalLocation');
+  
+  if (locationRow && modalLocation) {
+    if (order.location) {
+      if (order.location.includes(',')) {
+        const [lat, lng] = order.location.split(',');
+        modalLocation.href = `https://maps.google.com/?q=${lat.trim()},${lng.trim()}`;
+        modalLocation.innerHTML = `📍 Xaritada ko'rish →`;
+        locationRow.style.display = 'flex';
+      } else {
+        modalLocation.href = '#';
+        modalLocation.textContent = order.location;
+        locationRow.style.display = 'flex';
+      }
+    } else {
+      locationRow.style.display = 'none';
+    }
+  }
+  
+  // To'lov usuli
+  const paymentMethod = order.paymentMethod || 'payme';
+  const paymentText = paymentMethod.toUpperCase();
+  document.getElementById('modalPayment').textContent = paymentText;
+  
+  // Mahsulotlar
+  let items = order.items || [];
+  if (typeof items === 'string') {
+    try {
+      items = JSON.parse(items);
+    } catch (e) {
+      items = [];
+    }
+  }
+  
+  document.getElementById('modalItems').innerHTML = items.map(i => `
+    <div class="item-row">
+      <div class="item-info">
+        <div class="item-name">${i.name}</div>
+        <div class="item-qty">${i.qty} x ${(i.price || 0).toLocaleString()} so'm</div>
+      </div>
+      <div class="item-price">${(i.qty * (i.price || 0)).toLocaleString()} so'm</div>
+    </div>
+  `).join('');
+  
+  // ⭐⭐⭐ STATUS GA MOS TUGMALAR
+  const actionsDiv = document.getElementById('modalActions');
+  if (actionsDiv) {
+    let buttonsHtml = '';
+    
+    if (realStatus === 'pending' || realStatus === 'pending_payment') {
+      // Kutilayotgan buyurtma - Qabul, Bekor, Tekshirish
+      buttonsHtml = `
+        <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+          <button onclick="updateOrderStatus('${orderId}', 'accept')" style="flex: 1; background: linear-gradient(135deg, #00D084, #00b06b); color: #000; border: none; padding: 16px; border-radius: 12px; font-weight: 800; cursor: pointer;">
+            ✅ QABUL QILISH
+          </button>
+          <button onclick="updateOrderStatus('${orderId}', 'reject')" style="flex: 1; background: transparent; color: #FF4757; border: 2px solid #FF4757; padding: 16px; border-radius: 12px; font-weight: 800; cursor: pointer;">
+            ❌ BEKOR QILISH
+          </button>
+        </div>
+        <button onclick="openPaymeGroup('${orderId}')" style="width: 100%; background: linear-gradient(135deg, #3498db, #2980b9); color: #fff; border: none; padding: 14px; border-radius: 12px; font-weight: 700; cursor: pointer;">
+          💳 TO'LOVNI TEKSHIRISH
+        </button>
+      `;
+    } else if (realStatus === 'accepted') {
+      // Qabul qilingan - Tasdiqlash yoki Bekor
+      buttonsHtml = `
+        <div style="display: flex; gap: 12px;">
+          <button onclick="updateOrderStatus('${orderId}', 'confirm')" style="flex: 1; background: linear-gradient(135deg, #FFD700, #D4AF37); color: #000; border: none; padding: 16px; border-radius: 12px; font-weight: 800; cursor: pointer;">
+            ✅✅ TASDIQLASH
+          </button>
+          <button onclick="updateOrderStatus('${orderId}', 'reject')" style="flex: 1; background: transparent; color: #FF4757; border: 2px solid #FF4757; padding: 16px; border-radius: 12px; font-weight: 800; cursor: pointer;">
+            ❌ BEKOR QILISH
+          </button>
+        </div>
+      `;
+    } else {
+      // Bekor yoki tasdiqlangan - faqat yopish
+      buttonsHtml = `
+        <button onclick="closeModal()" style="width: 100%; background: rgba(255,255,255,0.1); color: #fff; border: none; padding: 16px; border-radius: 12px; font-weight: 700; cursor: pointer;">
+          🔙 YOPISH
+        </button>
+      `;
+    }
+    
+    actionsDiv.innerHTML = buttonsHtml;
+    actionsDiv.style.display = 'block';
+  }
+  
+  // Modalni ko'rsatish
+  const modal = document.getElementById('orderModal');
+  modal.classList.add('show');
+  
+  if (window.Telegram?.WebApp) {
+    window.Telegram.WebApp.BackButton.show();
+  }
+};
+
+window.updateOrderStatus = async function(orderId, action) {
+  try {
+    const response = await fetch(`${SERVER_URL}/api/orders/${orderId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: action === 'accept' ? 'accepted' : action === 'reject' ? 'rejected' : 'confirmed' })
+    });
+    
+    if (response.ok) {
+      showToast(`✅ Buyurtma ${action === 'accept' ? 'qabul qilindi' : action === 'reject' ? 'bekor qilindi' : 'tasdiqlandi'}!`);
+      closeModal();
+      await loadOrders();  // Ro'yxatni yangilash
+    } else {
+      showToast('❌ Xatolik yuz berdi');
+    }
+  } catch (error) {
+    console.error('Status yangilash xatosi:', error);
+    showToast('❌ Xatolik yuz berdi');
+  }
+};
+
+window.closeModal = function() {
+  const modal = document.getElementById('orderModal');
+  const content = modal.querySelector('.modal-content');
+  
+  if (window.Telegram?.WebApp) {
+    window.Telegram.WebApp.BackButton.hide();
+  }
+  
+  content.style.animation = 'slideDown 0.3s ease forwards';
+  
+  setTimeout(() => {
+    modal.classList.remove('show');
+    currentOrderKey = null;
+    content.style.animation = '';
+  }, 300);
+};
 
 function renderOrders() {
   const container = document.getElementById('ordersListContainer');
   if (!container) return;
   
-  // Faqat qabul qilingan buyurtmalarni ko'rsatish
-  renderAcceptedOrders(container);
+  // Barcha buyurtmalarni status bo'yicha guruhlash
+  const pendingOrders = orders.filter(o => {
+    const status = o.status || o.payment_status;
+    return status === 'pending' || status === 'pending_payment';
+  });
+  
+  const acceptedOrders = orders.filter(o => {
+    const status = o.status || o.payment_status;
+    return status === 'accepted' || status === 'confirmed' || status === 'paid';
+  });
+  
+  const rejectedOrders = orders.filter(o => {
+    const status = o.status || o.payment_status;
+    return status === 'rejected';
+  });
+  
+  // HTML yaratish
+  let html = '';
+  
+  // 1. Kutilayotgan buyurtmalar (agar bo'lsa)
+  if (pendingOrders.length > 0) {
+    html += `
+      <div class="orders-section">
+        <h3 style="color: #FFA502; font-size: 16px; margin: 20px 0 12px; font-weight: 600;">
+          ⏳ Kutilayotgan buyurtmalar (${pendingOrders.length})
+        </h3>
+        ${pendingOrders.map((order, index) => createOrderCard(order, index, 'pending')).join('')}
+      </div>
+    `;
+  }
+  
+  // 2. Qabul qilingan buyurtmalar
+  if (acceptedOrders.length > 0) {
+    html += `
+      <div class="orders-section">
+        <h3 style="color: #00D084; font-size: 16px; margin: 20px 0 12px; font-weight: 600;">
+          ✅ Qabul qilingan buyurtmalar (${acceptedOrders.length})
+        </h3>
+        ${acceptedOrders.map((order, index) => createOrderCard(order, index, 'accepted')).join('')}
+      </div>
+    `;
+  }
+  
+  // 3. Bekor qilingan buyurtmalar (agar bo'lsa)
+  if (rejectedOrders.length > 0) {
+    html += `
+      <div class="orders-section">
+        <h3 style="color: #FF4757; font-size: 16px; margin: 20px 0 12px; font-weight: 600;">
+          ❌ Bekor qilingan buyurtmalar (${rejectedOrders.length})
+        </h3>
+        ${rejectedOrders.map((order, index) => createOrderCard(order, index, 'rejected')).join('')}
+      </div>
+    `;
+  }
+  
+  // Agar umuman buyurtma bo'lmasa
+  if (orders.length === 0) {
+    html = `
+      <div class="empty-state">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <p>Hali buyurtmalar yo'q</p>
+      </div>
+    `;
+  }
+  
+  container.innerHTML = html;
+  
+  // Click eventlarni qo'shish
+  const cards = container.querySelectorAll('.order-card');
+  cards.forEach((card) => {
+    card.addEventListener('click', () => openOrderModal(card.dataset.id));
+  });
 }
 
 function renderAcceptedOrders(container) {
