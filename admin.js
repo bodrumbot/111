@@ -169,8 +169,6 @@ function createOrderCard(order, index, displayStatus) {
   return `
     <div class="order-card ${cardClass}" data-id="${order.firebaseKey}" data-status="${realStatus}" 
          style="animation: slideIn 0.4s ease ${index * 0.05}s backwards; border-left: 4px solid ${statusColor};">
-      ${hasScreenshot ? '<div class="screenshot-badge">📸</div>' : ''}
-      ${hasLocation ? '<div class="location-badge">📍</div>' : ''}
       <div class="order-header">
         <span class="order-id">#${(order.order_id || order.orderId || 'N/A').slice(-6)}</span>
         <span class="order-time">${dateStr} ${time}</span>
