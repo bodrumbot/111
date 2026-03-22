@@ -31,6 +31,7 @@ if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData
 const SERVER_URL = 'https://backend-production-1bf4.up.railway.app';
 const PAYME_MERCHANT_ID = '698d8268f7c89c2bb7cfc08e';
 const PAYME_CHECKOUT_URL = 'https://checkout.payme.uz';
+const PAYME_BASE_URL = 'https://payme.uz/checkout'; 
 
 const menu = getMenuFromLocal();
 let cart = [];
@@ -202,15 +203,6 @@ function getUserPhone() {
   return localStorage.getItem('bodrum_user_phone') || null;
 }
 
-// ==========================================
-// ⭐ YANGI: TO'LOV JARAYONI - BUYURTMA YARATMAYDI
-// Faqat Payme checkout ga yo'naltiradi
-// ==========================================
-
-// ==========================================
-// BUYURTMA BERISH - PAYME GA O'TISH + ADMIN GA XABAR
-// ==========================================
-
 async function startPaymentProcess() {
   if (!isTelegramWebApp) {
     showNotification('Faqat Telegram orqali!', 'error');
@@ -238,7 +230,7 @@ async function startPaymentProcess() {
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const orderId = 'ORD_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   
-  // 1. DARHOL BUYURTMA YARATISH (to'lovni tekshirmasdan)
+  // 1. DARHOL BUYURTMA YARATISH
   const orderData = {
     orderId: orderId,
     name: customerInfo.name,
@@ -273,36 +265,17 @@ async function startPaymentProcess() {
     const result = await response.json();
     console.log('✅ Buyurtma yaratildi:', result);
     
-    // 2. DARHOL ADMINGA XABAR YUBORISH - backend orqali
-    // Backend avtomatik admin ga xabar yuboradi (notify_admin_new_order)
+    // ✅ 2. TO'G'RI PAYME URL YARATISH
+    // Summa tiyinda (so'm * 100)
+    const amountInTiyin = total * 100;
     
-    // ✅ 3. PAYME GA O'TISH - TO'G'RILANGAN
-    const paymeUrl = `https://checkout.payme.uz/${PAYME_MERCHANT_ID}?orderId=${orderId}&amount=${total * 100}`;
+    // ⭐⭐⭐ TO'G'RI PAYME URL
+    const paymeUrl = `${PAYME_BASE_URL}/${PAYME_MERCHANT_ID}?amount=${amountInTiyin}&orderId=${orderId}`;
     
     console.log('🔗 Payme URL:', paymeUrl);
     
-    // Payme ga o'tish - bir necha usul bilan
-    try {
-      // Usul 1: tg.openLink (Telegram WebApp ichida)
-      if (tg.openLink) {
-        tg.openLink(paymeUrl, { try_instant_view: false });
-        console.log('✅ tg.openLink ishlatildi');
-      } 
-      // Usul 2: window.open (yangi tabda)
-      else if (window.open) {
-        window.open(paymeUrl, '_blank');
-        console.log('✅ window.open ishlatildi');
-      }
-      // Usul 3: location.href (shu sahifada)
-      else {
-        window.location.href = paymeUrl;
-        console.log('✅ location.href ishlatildi');
-      }
-    } catch (e) {
-      console.error('❌ Payme ga o\'tish xatosi:', e);
-      // Agar ochilmasa, link ni ko'rsatish
-      showPaymeLinkModal(paymeUrl);
-    }
+    // ✅ 3. PAYME GA O'TISH
+    openPaymeLink(paymeUrl);
     
     showNotification('✅ Buyurtma yuborildi! To\'lov sahifasiga o\'tildi.', 'success');
     
@@ -311,34 +284,110 @@ async function startPaymentProcess() {
     saveCartLS();
     renderCart();
     
-    // Profilga o'tish (biroz kutib)
+    // Profilga o'tish
     setTimeout(() => switchTab('profile'), 3000);
     
   } catch (error) {
-    console.error('❌ Buyurtma yaratish xatosi:', error);
-    showNotification('Xatolik yuz berdi, qayta urinib ko\'ring', 'error');
+    console.error('❌ Xato:', error);
+    showNotification('Xatolik yuz berdi: ' + error.message, 'error');
   }
 }
 
-// ✅ YANGI: Agar Payme ochilmasa, link ni ko'rsatish
+// ==========================================
+// PAYME LINK NI OCHISH - BARCHA USULLAR
+// ==========================================
+
+function openPaymeLink(paymeUrl) {
+  console.log('🚀 Payme ochilmoqda:', paymeUrl);
+  
+  // Usul 1: tg.openLink (Telegram WebApp)
+  if (tg && tg.openLink) {
+    try {
+      tg.openLink(paymeUrl, { try_instant_view: false });
+      console.log('✅ tg.openLink ishlatildi');
+      return;
+    } catch (e) {
+      console.warn('⚠️ tg.openLink xato:', e);
+    }
+  }
+  
+  // Usul 2: tg.openTelegramLink (agar payme.uz ichki link bo'lsa)
+  if (tg && tg.openTelegramLink) {
+    try {
+      tg.openTelegramLink(paymeUrl);
+      console.log('✅ tg.openTelegramLink ishlatildi');
+      return;
+    } catch (e) {
+      console.warn('⚠️ tg.openTelegramLink xato:', e);
+    }
+  }
+  
+  // Usul 3: window.open (yangi tab)
+  if (window.open) {
+    try {
+      const newWindow = window.open(paymeUrl, '_blank');
+      if (newWindow) {
+        console.log('✅ window.open ishlatildi');
+        return;
+      } else {
+        console.warn('⚠️ Popup bloklandi');
+      }
+    } catch (e) {
+      console.warn('⚠️ window.open xato:', e);
+    }
+  }
+  
+  // Usul 4: location.href (shu sahifada)
+  console.log('🔄 location.href ishlatilmoqda');
+  window.location.href = paymeUrl;
+}
+
+// ==========================================
+// AGAR OCHILMASA - MANUAL LINK MODAL
+// ==========================================
+
 function showPaymeLinkModal(paymeUrl) {
-  // Eski modal ni o'chirish
   const existing = document.getElementById('paymeLinkModal');
   if (existing) existing.remove();
   
   const modal = document.createElement('div');
   modal.id = 'paymeLinkModal';
   modal.className = 'modal-overlay show';
-  modal.style.zIndex = '5000';
+  modal.style.cssText = `
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.95);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  `;
+  
   modal.innerHTML = `
-    <div class="modal-box" style="max-width: 400px; text-align: center; padding: 32px 24px;">
-      <div style="font-size: 60px; margin-bottom: 20px;">💳</div>
-      <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #fff;">
+    <div style="
+      background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+      border-radius: 24px;
+      padding: 32px 24px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      border: 1px solid rgba(255,215,0,0.3);
+    ">
+      <div style="font-size: 64px; margin-bottom: 20px;">💳</div>
+      <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 12px; color: #FFD700;">
         To'lovni amalga oshiring
       </h2>
-      <p style="color: #888; margin-bottom: 24px; font-size: 14px; line-height: 1.6;">
-        Payme orqali to'lovni amalga oshirish uchun quyidagi tugmani bosing:
+      <p style="color: #888; margin-bottom: 24px; font-size: 15px; line-height: 1.6;">
+        Quyidagi tugmani bosib Payme orqali to'lovni amalga oshiring:
       </p>
+      
+      <div style="background: rgba(255,215,0,0.1); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+        <p style="font-size: 12px; color: #FFD700; margin: 0 0 8px 0;">Summa:</p>
+        <p style="font-size: 28px; font-weight: 800; color: #FFD700; margin: 0;">
+          ${cart.reduce((s, i) => s + i.price * i.qty, 0).toLocaleString()} so'm
+        </p>
+      </div>
       
       <a href="${paymeUrl}" target="_blank" style="
         display: block;
@@ -349,8 +398,9 @@ function showPaymeLinkModal(paymeUrl) {
         border-radius: 12px;
         text-decoration: none;
         font-weight: 800;
-        font-size: 16px;
-        margin-bottom: 16px;
+        font-size: 17px;
+        margin-bottom: 12px;
+        text-transform: uppercase;
       ">
         💳 Payme ga o'tish
       </a>
@@ -368,9 +418,9 @@ function showPaymeLinkModal(paymeUrl) {
         Keyinroq to'layman
       </button>
       
-      <div style="margin-top: 20px; padding: 12px; background: rgba(255,215,0,0.1); border-radius: 8px;">
-        <p style="font-size: 12px; color: #FFD700; margin: 0;">
-          ⚠️ To'lovni amalga oshirgach, buyurtma avtomatik qabul qilinadi
+      <div style="margin-top: 20px; padding: 12px; background: rgba(255,0,0,0.1); border-radius: 8px; border: 1px dashed rgba(255,0,0,0.3);">
+        <p style="font-size: 12px; color: #ff6b6b; margin: 0;">
+          ⚠️ To'lovsiz buyurtma bekor qilinadi!
         </p>
       </div>
     </div>
@@ -378,6 +428,11 @@ function showPaymeLinkModal(paymeUrl) {
   
   document.body.appendChild(modal);
 }
+
+window.closePaymeLinkModal = function() {
+  const modal = document.getElementById('paymeLinkModal');
+  if (modal) modal.remove();
+};
 
 window.closePaymeLinkModal = function() {
   const modal = document.getElementById('paymeLinkModal');
