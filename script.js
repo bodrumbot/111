@@ -234,7 +234,7 @@ async function startPaymentProcess() {
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const orderId = 'ORD_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   
-  // ⭐ YANGI: Avval buyurtma yaratish (admin hali ko'rmaydi)
+  // ✅ YANGI: Darhol buyurtma yaratish (to'lovni tekshirmasdan)
   const orderData = {
     orderId: orderId,
     name: customerInfo.name,
@@ -248,14 +248,13 @@ async function startPaymentProcess() {
     location: currentLocation.lat ? `${currentLocation.lat},${currentLocation.lng}` : currentLocation.address,
     tgId: getUserId(),
     source: 'webapp',
-    status: 'pending_payment',
+    status: 'pending',  // To'lov tekshirilmagan
     paymentStatus: 'pending',
     paymentMethod: 'payme'
   };
   
-  // Backend ga yuborish (adminga xabar ketmaydi)
   try {
-    showNotification('⏳ Buyurtma saqlanmoqda...', 'info');
+    showNotification('⏳ Buyurtma yuborilmoqda...', 'info');
     
     const response = await fetch(`${SERVER_URL}/api/orders`, {
       method: 'POST',
@@ -268,101 +267,26 @@ async function startPaymentProcess() {
     }
     
     const result = await response.json();
-    console.log('✅ Buyurtma yaratildi (kutilmoqda):', result);
+    console.log('✅ Buyurtma yaratildi:', result);
+    
+    // ✅ YANGI: Backend avtomatik admin ga xabar yuboradi
+    // To'lov tekshiruvi yo'q!
+    
+    showNotification('✅ Buyurtma qabul qilindi! Admin tez orada to\'lovni tekshiradi.', 'success');
+    
+    // Savatni tozalash
+    cart = [];
+    saveCartLS();
+    renderCart();
+    
+    // Profilga o'tish
+    setTimeout(() => switchTab('profile'), 1500);
     
   } catch (error) {
     console.error('❌ Buyurtma yaratish xatosi:', error);
     showNotification('Xatolik yuz berdi, qayta urinib ko\'ring', 'error');
-    return;
   }
-  
-  // Payme uchun ma'lumotlarni saqlash (agar kerak bo'lsa)
-  localStorage.setItem('bodrum_pending_order', JSON.stringify({
-    orderId: orderId,
-    total: total,
-    createdAt: Date.now()
-  }));
-  
-  // Payme checkout URL
-  const callbackUrl = encodeURIComponent(
-    `${window.location.origin}/payment-success.html?order_id=${orderId}&amount=${total}`
-  );
-  const amountTiyin = Math.round(total * 100);
-  const params = `m=${PAYME_MERCHANT_ID};ac.order_id=${orderId};a=${amountTiyin};cu=860;cb=${callbackUrl}`;
-  const paramsB64 = btoa(params);
-  const paymeUrl = `${PAYME_CHECKOUT_URL}/${paramsB64}`;
-  
-  // Payme ni ochish
-  tg.openLink(paymeUrl, { try_instant_view: false });
-  
-  showNotification('💳 Payme da to\'lovni amalga oshiring', 'info');
-  
-  // Savatni tozalash
-  cart = [];
-  saveCartLS();
-  renderCart();
 }
-
-// ⭐ YANGI: TO'LOV QILINGANIDAN KEYIN BUYURTMA YARATISH
-// payment-success.html dan chaqiriladi
-window.createOrderAfterPayment = async function(orderId) {
-  const pendingData = localStorage.getItem('bodrum_pending_order');
-  if (!pendingData) {
-    console.error('❌ Pending order topilmadi');
-    return null;
-  }
-  
-  try {
-    const order = JSON.parse(pendingData);
-    
-    // Agar orderId mos kelmasa, xatolik
-    if (order.orderId !== orderId) {
-      console.error('❌ Order ID mos kelmadi');
-      return null;
-    }
-    
-    // Endi buyurtma yaratish va backend ga yuborish
-    const response = await fetch(`${SERVER_URL}/api/orders`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...order,
-        status: 'pending_payment', // To'lov qilingan, lekin admin tasdig'i kutilmoqda
-        paymentStatus: 'paid'
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error('Buyurtma yaratish xatosi');
-    }
-    
-    const result = await response.json();
-    
-    // LocalStorage dan o'chirish
-    localStorage.removeItem('bodrum_pending_order');
-    
-    // Buyurtma tarixiga qo'shish
-    await addOrderDB({
-      text: `Buyurtma #${orderId.slice(-6)}`,
-      date: new Date().toISOString(),
-      total: order.total,
-      items: order.items
-    });
-    
-    showNotification('✅ Buyurtma qabul qilindi!', 'success');
-    
-    return result;
-    
-  } catch (error) {
-    console.error('❌ Buyurtma yaratish xatosi:', error);
-    showNotification('Xatolik yuz berdi', 'error');
-    return null;
-  }
-};
-
-// ==========================================
-// LOCATION FUNCTIONS
-// ==========================================
 
 function showLocationRequestModal() {
   const modal = document.getElementById('locationRequestModal');
