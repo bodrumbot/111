@@ -444,41 +444,6 @@ function renderAcceptedOrders(container) {
   });
 }
 
-function createOrderCard(order, index) {
-  const date = new Date(order.acceptedAt || order.accepted_at || order.created_at || order.createdAt);
-  const time = date.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
-  const dateStr = date.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit' });
-  
-  let itemsText = '';
-  if (order.items && Array.isArray(order.items)) {
-    itemsText = order.items.map(i => `${i.name} x${i.qty}`).join(', ');
-  }
-  
-  const hasScreenshot = order.screenshot ? true : false;
-  const hasLocation = order.location ? true : false;
-  
-  return `
-    <div class="order-card accepted" data-id="${order.firebaseKey}" style="animation: slideIn 0.4s ease backwards;">
-      ${hasScreenshot ? '<div class="screenshot-badge">📸</div>' : ''}
-      ${hasLocation ? '<div class="location-badge">📍</div>' : ''}
-      <div class="order-header">
-        <span class="order-id">#${(order.order_id || order.orderId)?.slice(-6)}</span>
-        <span class="order-time">${dateStr} ${time}</span>
-      </div>
-      <div class="order-customer">${order.name || "Noma'lum"}</div>
-      <div class="order-phone">+998 ${order.phone}</div>
-      <div class="order-items-preview">${itemsText}</div>
-      <div class="order-footer">
-        <span class="order-total">${order.total?.toLocaleString()} so'm</span>
-        <span class="order-status accepted">✅ Qabul qilingan</span>
-      </div>
-    </div>
-  `;
-}
-
-// ==========================================
-// MODAL - JOYLASHUV BILAN
-// ==========================================
 
 window.openOrderModal = async function(orderId) {
   const order = orders.find(o => o.firebaseKey === orderId);
