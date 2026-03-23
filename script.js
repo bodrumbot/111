@@ -524,22 +524,24 @@ async function loadUserProfile() {
 }
 
 // ⭐⭐⭐ TO'G'RILANGAN loadUserOrdersFromServer
+// ⭐⭐⭐ TO'G'RILANGAN - Har bir mijoz faqat o'z buyurtmalarini ko'radi
 async function loadUserOrdersFromServer() {
   try {
+    const userId = getUserId(); // UNIQUE user ID (tg_123 yoki user_xxx)
     const phone = getUserPhone();
+    
+    console.log('🔍 Buyurtmalarni yuklash:', { userId, phone });
 
-    // Agar telefon raqam bo'lmasa, serverga so'rov yubormaymiz
-    if (!phone || phone.length !== 9) {
-      console.log('⚠️ Telefon raqam yo\'q, serverdan buyurtmalarni yuklamaymiz');
+    // ⭐ MUHIM: userId yoki phone bo'lmasa, so'rov yubormaymiz
+    if (!userId && (!phone || phone.length !== 9)) {
+      console.log('⚠️ User ID yoki telefon yo\'q');
       userOrders = [];
       updateProfileStats();
       return;
     }
 
-    console.log('🔍 Buyurtmalarni yuklash: phone =', phone);
-
-    // Phone orqali buyurtmalarni olish
-    const response = await fetch(`${SERVER_URL}/api/orders?phone=${encodeURIComponent(phone)}`, {
+    // ⭐ MUHIM: Serverga userId yuborish (eng muhimi)
+    const response = await fetch(`${SERVER_URL}/api/orders?userId=${encodeURIComponent(userId)}&phone=${encodeURIComponent(phone || '')}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -547,19 +549,27 @@ async function loadUserOrdersFromServer() {
     if (response.ok) {
       const result = await response.json();
       if (result && Array.isArray(result)) {
-        userOrders = result;
-        console.log('✅ Buyurtmalar yuklandi:', userOrders.length);
+        // ⭐ FAQAT SHU MIJOZNING BUYURTMALARI
+        userOrders = result.filter(order => {
+          // Order ni shu user yaratganmi tekshirish
+          const orderUserId = order.tg_id || order.user_id || order.tgId;
+          const orderPhone = order.phone;
+          
+          // tg_id bilan tekshirish (Telegram users)
+          if (userId && orderUserId && orderUserId.toString() === userId.toString()) {
+            return true;
+          }
+          // phone bilan tekshirish (sayt users)
+          if (phone && orderPhone && orderPhone.toString() === phone.toString()) {
+            return true;
+          }
+          return false;
+        });
+        
+        console.log('✅ Mijoz buyurtmalari yuklandi:', userOrders.length);
         updateProfileStats();
         renderOrdersList(userOrders);
-      } else {
-        console.log('⚠️ Buyurtmalar topilmadi yoki noto\'g\'ri format');
-        userOrders = [];
-        updateProfileStats();
       }
-    } else if (response.status === 404) {
-      console.log('⚠️ Buyurtmalar topilmadi (404)');
-      userOrders = [];
-      updateProfileStats();
     } else {
       console.error('❌ API xatosi:', response.status);
       userOrders = [];
@@ -571,6 +581,7 @@ async function loadUserOrdersFromServer() {
     updateProfileStats();
   }
 }
+
 
 function renderProfile() {
   if (!userProfile) return;
