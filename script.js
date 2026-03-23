@@ -39,7 +39,7 @@ let activeCategory = 'all';
 let searchQuery = '';
 let currentFoodItem = null;
 let userProfile = null;
-let userOrders = [];
+let userOrders = []; // ⭐ MUHIM: Boshlang'ich qiymat
 
 // DOM Elements
 const menuContent = document.getElementById('menuContent');
@@ -73,7 +73,7 @@ function showTelegramOnlyModal() {
     padding: 40px;
     text-align: center;
   `;
-  
+
   div.innerHTML = `
     <div style="font-size: 80px; margin-bottom: 24px;">🤖</div>
     <h1 style="font-size: 24px; color: #FFD700; margin-bottom: 16px; font-weight: 700;">
@@ -95,7 +95,7 @@ function showTelegramOnlyModal() {
       👉 Botga o'tish
     </a>
   `;
-  
+
   document.body.appendChild(div);
 }
 
@@ -153,12 +153,12 @@ function generatePaymeUrl(orderId, amount) {
   const params = `m=${PAYME_MERCHANT_ID};ac.order_id=${orderId};a=${amountInTiyin}`;
   const base64Params = btoa(params);
   const paymeUrl = `${PAYME_CHECKOUT_URL}/${base64Params}`;
-  
+
   console.log('🔗 Payme URL yaratildi:');
   console.log('   Parametrlar:', params);
   console.log('   Base64:', base64Params);
   console.log('   URL:', paymeUrl);
-  
+
   return paymeUrl;
 }
 
@@ -169,30 +169,30 @@ function generatePaymeUrl(orderId, amount) {
 function getCustomerInfo() {
   let name = localStorage.getItem('bodrum_user_name');
   let phone = localStorage.getItem('bodrum_user_phone');
-  
+
   if (!name && isTelegramWebApp && tg.initDataUnsafe?.user?.first_name) {
     name = tg.initDataUnsafe.user.first_name;
     if (tg.initDataUnsafe.user.last_name) {
       name += ' ' + tg.initDataUnsafe.user.last_name;
     }
   }
-  
+
   if (!name) name = null;
   if (!phone || phone.length !== 9) phone = null;
-  
+
   return { name, phone };
 }
 
 function saveUserProfile(name, phone) {
   localStorage.setItem('bodrum_user_name', name);
   localStorage.setItem('bodrum_user_phone', phone);
-  
+
   userProfile = {
     name: name,
     phone: phone,
     user_id: getUserId()
   };
-  
+
   renderProfile();
 }
 
@@ -200,7 +200,7 @@ function getUserId() {
   if (isTelegramWebApp && tg.initDataUnsafe?.user?.id) {
     return 'tg_' + tg.initDataUnsafe.user.id;
   }
-  
+
   let userId = localStorage.getItem('bodrum_user_id');
   if (!userId) {
     userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -225,26 +225,26 @@ async function startPaymentProcess() {
     showNotification('Faqat Telegram orqali!', 'error');
     return;
   }
-  
+
   if (!cart.length) {
     showNotification('Savat bo\'sh!', 'error');
     return;
   }
-  
+
   const customerInfo = getCustomerInfo();
   if (!customerInfo.name || !customerInfo.phone) {
     showContactRequestModal();
     return;
   }
-  
+
   if (!currentLocation) {
     showLocationRequestModal();
     return;
   }
-  
+
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const orderId = 'ORD_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-  
+
   const orderData = {
     orderId: orderId,
     name: customerInfo.name,
@@ -262,35 +262,35 @@ async function startPaymentProcess() {
     paymentStatus: 'pending',
     paymentMethod: 'payme'
   };
-  
+
   try {
     showNotification('⏳ Buyurtma yuborilmoqda...', 'info');
-    
+
     const response = await fetch(`${SERVER_URL}/api/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderData)
     });
-    
+
     if (!response.ok) {
       throw new Error('Buyurtma yaratish xatosi');
     }
-    
+
     const result = await response.json();
     console.log('✅ Buyurtma yaratildi:', result);
-    
+
     const paymeUrl = generatePaymeUrl(orderId, total);
-    
+
     openPaymeLink(paymeUrl);
-    
+
     showNotification('✅ Buyurtma yuborildi! To\'lov sahifasiga o\'tildi.', 'success');
-    
+
     cart = [];
     saveCartLS();
     renderCart();
-    
+
     setTimeout(() => switchTab('profile'), 3000);
-    
+
   } catch (error) {
     console.error('❌ Xato:', error);
     showNotification('Xatolik yuz berdi: ' + error.message, 'error');
@@ -299,7 +299,7 @@ async function startPaymentProcess() {
 
 function openPaymeLink(paymeUrl) {
   console.log('🚀 Payme ochilmoqda:', paymeUrl);
-  
+
   if (tg && tg.openLink) {
     try {
       tg.openLink(paymeUrl, { try_instant_view: false });
@@ -309,7 +309,7 @@ function openPaymeLink(paymeUrl) {
       console.warn('⚠️ tg.openLink xato:', e);
     }
   }
-  
+
   if (tg && tg.openTelegramLink) {
     try {
       tg.openTelegramLink(paymeUrl);
@@ -319,7 +319,7 @@ function openPaymeLink(paymeUrl) {
       console.warn('⚠️ tg.openTelegramLink xato:', e);
     }
   }
-  
+
   if (window.open) {
     try {
       const newWindow = window.open(paymeUrl, '_blank');
@@ -333,7 +333,7 @@ function openPaymeLink(paymeUrl) {
       console.warn('⚠️ window.open xato:', e);
     }
   }
-  
+
   console.log('🔄 location.href ishlatilmoqda');
   window.location.href = paymeUrl;
 }
@@ -341,7 +341,7 @@ function openPaymeLink(paymeUrl) {
 function showPaymeLinkModal(paymeUrl, amount) {
   const existing = document.getElementById('paymeLinkModal');
   if (existing) existing.remove();
-  
+
   const modal = document.createElement('div');
   modal.id = 'paymeLinkModal';
   modal.className = 'modal-overlay show';
@@ -356,7 +356,7 @@ function showPaymeLinkModal(paymeUrl, amount) {
     justify-content: center;
     padding: 20px;
   `;
-  
+
   modal.innerHTML = `
     <div style="
       background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
@@ -374,14 +374,14 @@ function showPaymeLinkModal(paymeUrl, amount) {
       <p style="color: #888; margin-bottom: 24px; font-size: 15px; line-height: 1.6;">
         Quyidagi tugmani bosib Payme orqali to'lovni amalga oshiring:
       </p>
-      
+
       <div style="background: rgba(255,215,0,0.1); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
         <p style="font-size: 12px; color: #FFD700; margin: 0 0 8px 0;">Summa:</p>
         <p style="font-size: 28px; font-weight: 800; color: #FFD700; margin: 0;">
           ${amount.toLocaleString()} so'm
         </p>
       </div>
-      
+
       <a href="${paymeUrl}" target="_blank" style="
         display: block;
         width: 100%;
@@ -397,7 +397,7 @@ function showPaymeLinkModal(paymeUrl, amount) {
       ">
         💳 Payme ga o'tish
       </a>
-      
+
       <button onclick="closePaymeLinkModal()" style="
         width: 100%;
         background: transparent;
@@ -410,7 +410,7 @@ function showPaymeLinkModal(paymeUrl, amount) {
       ">
         Keyinroq to'layman
       </button>
-      
+
       <div style="margin-top: 20px; padding: 12px; background: rgba(255,0,0,0.1); border-radius: 8px; border: 1px dashed rgba(255,0,0,0.3);">
         <p style="font-size: 12px; color: #ff6b6b; margin: 0;">
           ⚠️ To'lovsiz buyurtma bekor qilinadi!
@@ -418,7 +418,7 @@ function showPaymeLinkModal(paymeUrl, amount) {
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(modal);
 }
 
@@ -524,14 +524,15 @@ function showManualLocationInput() {
 // PROFILE FUNCTIONS - TO'G'RILANGAN
 // ==========================================
 
+// ⭐⭐⭐ ASOSIY TO'G'RILASH - loadUserProfile funksiyasi
 async function loadUserProfile() {
   if (!isTelegramWebApp) return;
-  
+
   console.log('🔍 Profil yuklanmoqda...');
-  
+
   const savedName = getUserName();
   const savedPhone = getUserPhone();
-  
+
   // ⭐⭐⭐ AGAR LOCALSTORAGE DA MA'LUMOT BO'LSA, DARHOL KO'RSATISH
   if (savedName && savedPhone) {
     userProfile = {
@@ -539,15 +540,15 @@ async function loadUserProfile() {
       phone: savedPhone,
       user_id: getUserId()
     };
-    
+
     // Profil ma'lumotlarini darhol ko'rsatish
     renderProfile();
-    
-    // Buyurtmalarni yuklash (background da)
-    await loadUserOrders();
+
+    // ⭐⭐⭐ SERVERDAN BUYURTMALARNI YUKLASH (background da)
+    await loadUserOrdersFromServer();
     return;
   }
-  
+
   // Telegram dan olish
   try {
     const tgUser = tg.initDataUnsafe?.user;
@@ -567,16 +568,16 @@ async function loadUserProfile() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     const result = await response.json();
-    
+
     if (result.success && result.profile) {
       userProfile = result.profile;
-      
+
       // ⭐⭐⭐ BUYURTMALARNI SAQLASH VA KO'RSATISH
       userOrders = result.orders || [];
-      
+
       localStorage.setItem('bodrum_user_name', userProfile.name);
       localStorage.setItem('bodrum_user_phone', userProfile.phone);
-      
+
       renderProfile();
       updateProfileStats(); // ⭐ Statistikani yangilash
       renderOrdersList(userOrders);
@@ -589,33 +590,34 @@ async function loadUserProfile() {
   }
 }
 
-async function loadUserOrders() {
+// ⭐⭐⭐ YANGI FUNKSiya - Serverdan buyurtmalarni yuklash
+async function loadUserOrdersFromServer() {
   if (!isTelegramWebApp) return;
-  
+
   try {
     const userId = getUserId();
-    
-    // ⭐⭐⭐ TELEGRAM ID ni to'g'ri formatlash
+
+    // TELEGRAM ID ni to'g'ri formatlash
     let tgId = userId;
     if (tgId.startsWith('tg_')) {
       tgId = tgId.replace('tg_', '');
     }
-    
+
     console.log('🔍 Buyurtmalarni yuklash: tgId =', tgId);
-    
+
     const response = await fetch(`${SERVER_URL}/api/user/profile`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tgId: tgId })
     });
-    
+
     if (response.ok) {
       const result = await response.json();
       if (result.success && result.orders) {
         userOrders = result.orders;
         console.log('✅ Buyurtmalar yuklandi:', userOrders.length);
-        
-        // ⭐⭐⭐ STATISTIKANI YANGILASH
+
+        // ⭐⭐⭐ STATISTIKANI YANGILASH VA KO'RSATISH
         updateProfileStats();
         renderOrdersList(userOrders);
       } else {
@@ -635,6 +637,7 @@ async function loadUserOrders() {
   }
 }
 
+// ⭐⭐⭐ TO'G'RILANGAN renderProfile funksiyasi
 function renderProfile() {
   if (!userProfile) return;
 
@@ -648,11 +651,9 @@ function renderProfile() {
   if (displayName) displayName.textContent = name;
   if (displayPhone) displayPhone.textContent = formatPhone(phone);
 
-  // ⭐⭐⭐ STATISTIKANI YANGILASH (userOrders bo'sh bo'lmasa)
-  if (userOrders && userOrders.length > 0) {
-    updateProfileStats();
-  }
-  
+  // ⭐⭐⭐ STATISTIKANI HAR DOIM YANGILASH
+  updateProfileStats();
+
   const updateBtn = document.getElementById('updatePhoneBtn');
   if (updateBtn) {
     updateBtn.style.display = 'block';
@@ -660,13 +661,15 @@ function renderProfile() {
   }
 }
 
-// ⭐⭐⭐ STATISTIKANI HISOBLASH VA KO'RSATISH
+// ⭐⭐⭐ TO'G'RILANGAN STATISTIKA FUNKSiyasi
 function updateProfileStats() {
   console.log('📊 Statistika yangilanmoqda...', userOrders);
-  
-  // userOrders bo'sh bo'lsa, 0 ko'rsatish
-  const totalOrders = userOrders ? userOrders.length : 0;
-  const totalSpent = userOrders ? userOrders.reduce((sum, o) => sum + (o.total || 0), 0) : 0;
+
+  // userOrders bo'sh bo'lsa ham ishlaydi
+  const totalOrders = userOrders && Array.isArray(userOrders) ? userOrders.length : 0;
+  const totalSpent = userOrders && Array.isArray(userOrders) 
+    ? userOrders.reduce((sum, o) => sum + (o.total || 0), 0) 
+    : 0;
 
   const totalOrdersEl = document.getElementById('totalOrders');
   const totalSpentEl = document.getElementById('totalSpent');
@@ -677,12 +680,12 @@ function updateProfileStats() {
     totalOrdersEl.textContent = totalOrders;
     console.log('✅ totalOrders:', totalOrders);
   }
-  
+
   if (totalSpentEl) {
     totalSpentEl.textContent = (totalSpent / 1000).toFixed(0) + 'k';
     console.log('✅ totalSpent:', totalSpent);
   }
-  
+
   if (ordersCountBadgeEl) {
     ordersCountBadgeEl.textContent = totalOrders;
   }
@@ -723,10 +726,10 @@ window.showContactRequestModal = function() {
     showNotification('Faqat Telegram orqali!', 'error');
     return;
   }
-  
+
   const existing = document.getElementById('contactRequestModal');
   if (existing && existing.classList.contains('show')) return;
-  
+
   const modal = document.getElementById('contactRequestModal');
   if (modal) {
     modal.classList.add('show');
@@ -745,23 +748,23 @@ window.requestContactFromModal = function() {
     showProfileInputModal();
     return;
   }
-  
+
   tg.requestContact((result) => {
     if (result) {
       const contact = tg.initDataUnsafe?.contact;
       if (contact) {
         let phone = contact.phone_number || '';
-        phone = phone.replace(/\\D/g, '');
+        phone = phone.replace(/\D/g, '');
         if (phone.startsWith('998')) phone = phone.substring(3);
         phone = phone.slice(-9);
-        
+
         const name = contact.first_name || contact.name || 'Foydalanuvchi';
         saveUserProfile(name, phone);
         closeContactRequestModal();
         showNotification('✅ Ma\'lumotlar saqlandi!', 'success');
-        
+
         // ⭐⭐⭐ BUYURTMALARNI QAYTA YUKLASH
-        setTimeout(() => loadUserOrders(), 500);
+        setTimeout(() => loadUserOrdersFromServer(), 500);
       }
     } else {
       showProfileInputModal();
@@ -782,49 +785,49 @@ window.showProfileInputModal = function() {
       <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #FFD700, #D4AF37); display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 20px;">👤</div>
       <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #fff;">Ma'lumotlaringiz</h2>
       <p style="color: #888; margin-bottom: 24px; font-size: 14px;">Buyurtma berish uchun ismingiz va telefon raqamingiz kerak</p>
-      
+
       <div style="margin-bottom: 16px;">
         <input type="text" id="inputName" placeholder="Ismingiz" style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(212,175,55,0.3); border-radius: 12px; padding: 16px; color: white; font-size: 15px; margin-bottom: 12px;">
         <input type="tel" id="inputPhone" placeholder="Telefon (901234567)" style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(212,175,55,0.3); border-radius: 12px; padding: 16px; color: white; font-size: 15px;">
       </div>
-      
+
       <button onclick="saveProfileAndContinue()" style="width: 100%; background: linear-gradient(135deg, #FFD700, #D4AF37); color: #000; border: none; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: 800; cursor: pointer; margin-bottom: 12px;">Davom ettirish</button>
       <button onclick="closeProfileInputModal()" style="width: 100%; background: transparent; color: #888; border: 2px solid rgba(255,255,255,0.1); padding: 14px; border-radius: 12px; font-size: 14px; cursor: pointer;">Bekor qilish</button>
     </div>
   `;
-  
+
   document.body.appendChild(modal);
 };
 
 window.saveProfileAndContinue = function() {
   const nameInput = document.getElementById('inputName');
   const phoneInput = document.getElementById('inputPhone');
-  
+
   const name = nameInput?.value?.trim();
   let phone = phoneInput?.value?.trim();
-  
+
   if (!name || !phone) {
     showNotification('Iltimos, ism va telefon raqam kiriting', 'error');
     return;
   }
-  
-  phone = phone.replace(/\\D/g, '');
+
+  phone = phone.replace(/\D/g, '');
   if (phone.startsWith('998')) phone = phone.substring(3);
   if (phone.startsWith('+998')) phone = phone.substring(4);
   phone = phone.slice(-9);
-  
+
   if (phone.length !== 9) {
     showNotification('Noto\'g\'ri telefon raqam', 'error');
     return;
   }
-  
+
   saveUserProfile(name, phone);
   closeProfileInputModal();
   closeContactRequestModal();
   showNotification('✅ Ma\'lumotlar saqlandi!', 'success');
-  
+
   // ⭐⭐⭐ BUYURTMALARNI YUKLASH
-  setTimeout(() => loadUserOrders(), 500);
+  setTimeout(() => loadUserOrdersFromServer(), 500);
 };
 
 window.closeProfileInputModal = function() {
@@ -837,23 +840,23 @@ window.requestContact = function() {
     showNotification('Faqat Telegram orqali!', 'error');
     return;
   }
-  
+
   if (tg.requestContact) {
     tg.requestContact((result) => {
       if (result) {
         const contact = tg.initDataUnsafe?.contact;
         if (contact) {
           let phone = contact.phone_number || '';
-          phone = phone.replace(/\\D/g, '');
+          phone = phone.replace(/\D/g, '');
           if (phone.startsWith('998')) phone = phone.substring(3);
           phone = phone.slice(-9);
-          
+
           const name = contact.first_name || contact.name || 'Foydalanuvchi';
           saveUserProfile(name, phone);
           showNotification('✅ Ma\'lumotlar yangilandi!', 'success');
-          
+
           // ⭐⭐⭐ BUYURTMALARNI QAYTA YUKLASH
-          setTimeout(() => loadUserOrders(), 500);
+          setTimeout(() => loadUserOrdersFromServer(), 500);
         }
       } else {
         showProfileInputModal();
@@ -864,23 +867,25 @@ window.requestContact = function() {
   }
 };
 
+// ⭐⭐⭐ TO'G'RILANGAN renderOrdersList funksiyasi
 function renderOrdersList(orders) {
   const container = document.getElementById('ordersList');
   if (!container) return;
 
-  if (!orders || orders.length === 0) {
+  // orders bo'sh yoki undefined bo'lsa
+  if (!orders || !Array.isArray(orders) || orders.length === 0) {
     container.innerHTML = `
       <div class="empty-orders">
         <div class="empty-orders-icon">📭</div>
-        <div class="empty-orders-text">Hali buyurtmalar yo'q</div>
-        <button class="browse-menu-btn" onclick="switchTab('menu')">Menyuni ko'rish</button>
+        <div class="empty-orders-text">Hali buyurtmalar yo\'q</div>
+        <button class="browse-menu-btn" onclick="switchTab('menu')">Menyuni ko\'rish</button>
       </div>
     `;
     return;
   }
 
   container.innerHTML = orders.slice(0, 10).map(order => {
-    const date = new Date(order.created_at || order.createdAt);
+    const date = new Date(order.created_at || order.createdAt || Date.now());
     const items = order.items || [];
     let itemsText = '';
 
@@ -1116,7 +1121,7 @@ function renderCart() {
         </div>
         <div class="cart-item-info">
           <div class="cart-item-name">${item.name}</div>
-          <div class="cart-item-price">${(item.price * item.qty).toLocaleString()} so'm</div>
+          <div class="cart-item-price">${(item.price * item.qty).toLocaleString()} so\'m</div>
         </div>
         <div class="cart-item-controls">
           <div class="cart-item-qty">
@@ -1131,7 +1136,7 @@ function renderCart() {
   });
 
   cartBadge.textContent = cart.reduce((s, i) => s + i.qty, 0);
-  cartTotal.textContent = `Umumiy: ${total.toLocaleString()} so'm`;
+  cartTotal.textContent = `Umumiy: ${total.toLocaleString()} so\'m`;
 }
 
 window.updateQty = function(idx, delta) {
@@ -1190,7 +1195,7 @@ document.getElementById('orderBtn').addEventListener('click', () => {
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🚀 DOMContentLoaded - BODRUM (To\'lovdan keyin buyurtma)');
   console.log('📱 Mode:', isTelegramWebApp ? 'Telegram WebApp' : 'Sayt (bloklangan)');
-  
+
   if (!isTelegramWebApp) {
     return;
   }
@@ -1200,15 +1205,15 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCategories();
     renderMenu();
     renderCart();
-    
+
     // ⭐⭐⭐ PROFILNI DARHOL YUKLASH
     loadUserProfile();
-    
+
     tg.MainButton.setText('🛒 Buyurtma berish');
     tg.MainButton.onClick(() => {
       startPaymentProcess();
     });
-    
+
   } catch (error) {
     console.error('Init xato:', error);
   }
