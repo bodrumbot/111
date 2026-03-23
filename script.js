@@ -148,26 +148,10 @@ function showNotification(message, type = 'info') {
 // ⭐⭐⭐ PAYME URL GENERATOR - TO'G'RI FORMAT
 // ==========================================
 
-/**
- * Payme checkout URL yaratish
- * Format: https://checkout.payme.uz/base64(m=merchant_id;ac.order_id=xxx;a=amount)
- * 
- * @param {string} orderId - Buyurtma ID
- * @param {number} amount - Summa SO'M da (tiyin emas!)
- * @returns {string} - To'liq Payme URL
- */
 function generatePaymeUrl(orderId, amount) {
-  // Summa tiyinga o'tkazish (1 so'm = 100 tiyin)
   const amountInTiyin = Math.round(amount * 100);
-  
-  // Parametrlarni yaratish (nuqtali vergul bilan ajratilgan)
-  // Format: m=merchant_id;ac.order_id=order_id;a=amount
   const params = `m=${PAYME_MERCHANT_ID};ac.order_id=${orderId};a=${amountInTiyin}`;
-  
-  // Base64 encode
   const base64Params = btoa(params);
-  
-  // To'liq URL
   const paymeUrl = `${PAYME_CHECKOUT_URL}/${base64Params}`;
   
   console.log('🔗 Payme URL yaratildi:');
@@ -177,10 +161,6 @@ function generatePaymeUrl(orderId, amount) {
   
   return paymeUrl;
 }
-
-// Test qilish
-console.log('🧪 Payme URL test:');
-console.log(generatePaymeUrl('TEST_123', 50000)); // 50,000 so'm
 
 // ==========================================
 // MIJOZ MA'LUMOTLARI
@@ -251,14 +231,12 @@ async function startPaymentProcess() {
     return;
   }
   
-  // Mijoz ma'lumotlarini tekshirish
   const customerInfo = getCustomerInfo();
   if (!customerInfo.name || !customerInfo.phone) {
     showContactRequestModal();
     return;
   }
   
-  // Joylashuv tekshiruvi
   if (!currentLocation) {
     showLocationRequestModal();
     return;
@@ -267,7 +245,6 @@ async function startPaymentProcess() {
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const orderId = 'ORD_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   
-  // 1. DARHOL BUYURTMA YARATISH
   const orderData = {
     orderId: orderId,
     name: customerInfo.name,
@@ -302,20 +279,16 @@ async function startPaymentProcess() {
     const result = await response.json();
     console.log('✅ Buyurtma yaratildi:', result);
     
-    // ⭐⭐⭐ TO'G'RI PAYME URL YARATISH
     const paymeUrl = generatePaymeUrl(orderId, total);
     
-    // ✅ 2. PAYME GA O'TISH
     openPaymeLink(paymeUrl);
     
     showNotification('✅ Buyurtma yuborildi! To\'lov sahifasiga o\'tildi.', 'success');
     
-    // Savatni tozalash
     cart = [];
     saveCartLS();
     renderCart();
     
-    // Profilga o'tish
     setTimeout(() => switchTab('profile'), 3000);
     
   } catch (error) {
@@ -324,14 +297,9 @@ async function startPaymentProcess() {
   }
 }
 
-// ==========================================
-// PAYME LINK NI OCHISH - BARCHA USULLAR
-// ==========================================
-
 function openPaymeLink(paymeUrl) {
   console.log('🚀 Payme ochilmoqda:', paymeUrl);
   
-  // Usul 1: tg.openLink (Telegram WebApp)
   if (tg && tg.openLink) {
     try {
       tg.openLink(paymeUrl, { try_instant_view: false });
@@ -342,7 +310,6 @@ function openPaymeLink(paymeUrl) {
     }
   }
   
-  // Usul 2: tg.openTelegramLink (agar payme.uz ichki link bo'lsa)
   if (tg && tg.openTelegramLink) {
     try {
       tg.openTelegramLink(paymeUrl);
@@ -353,7 +320,6 @@ function openPaymeLink(paymeUrl) {
     }
   }
   
-  // Usul 3: window.open (yangi tab)
   if (window.open) {
     try {
       const newWindow = window.open(paymeUrl, '_blank');
@@ -368,14 +334,9 @@ function openPaymeLink(paymeUrl) {
     }
   }
   
-  // Usul 4: location.href (shu sahifada)
   console.log('🔄 location.href ishlatilmoqda');
   window.location.href = paymeUrl;
 }
-
-// ==========================================
-// AGAR OCHILMASA - MANUAL LINK MODAL
-// ==========================================
 
 function showPaymeLinkModal(paymeUrl, amount) {
   const existing = document.getElementById('paymeLinkModal');
@@ -390,6 +351,7 @@ function showPaymeLinkModal(paymeUrl, amount) {
     background: rgba(0,0,0,0.95);
     z-index: 9999;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 20px;
@@ -559,7 +521,7 @@ function showManualLocationInput() {
 }
 
 // ==========================================
-// PROFILE FUNCTIONS
+// PROFILE FUNCTIONS - TO'G'RILANGAN
 // ==========================================
 
 async function loadUserProfile() {
@@ -570,14 +532,19 @@ async function loadUserProfile() {
   const savedName = getUserName();
   const savedPhone = getUserPhone();
   
+  // ⭐⭐⭐ AGAR LOCALSTORAGE DA MA'LUMOT BO'LSA, DARHOL KO'RSATISH
   if (savedName && savedPhone) {
     userProfile = {
       name: savedName,
       phone: savedPhone,
       user_id: getUserId()
     };
+    
+    // Profil ma'lumotlarini darhol ko'rsatish
     renderProfile();
-    loadUserOrders();
+    
+    // Buyurtmalarni yuklash (background da)
+    await loadUserOrders();
     return;
   }
   
@@ -603,12 +570,15 @@ async function loadUserProfile() {
     
     if (result.success && result.profile) {
       userProfile = result.profile;
+      
+      // ⭐⭐⭐ BUYURTMALARNI SAQLASH VA KO'RSATISH
       userOrders = result.orders || [];
       
       localStorage.setItem('bodrum_user_name', userProfile.name);
       localStorage.setItem('bodrum_user_phone', userProfile.phone);
       
       renderProfile();
+      updateProfileStats(); // ⭐ Statistikani yangilash
       renderOrdersList(userOrders);
     } else {
       showProfileNotFound();
@@ -624,21 +594,44 @@ async function loadUserOrders() {
   
   try {
     const userId = getUserId();
+    
+    // ⭐⭐⭐ TELEGRAM ID ni to'g'ri formatlash
+    let tgId = userId;
+    if (tgId.startsWith('tg_')) {
+      tgId = tgId.replace('tg_', '');
+    }
+    
+    console.log('🔍 Buyurtmalarni yuklash: tgId =', tgId);
+    
     const response = await fetch(`${SERVER_URL}/api/user/profile`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tgId: userId })
+      body: JSON.stringify({ tgId: tgId })
     });
     
     if (response.ok) {
       const result = await response.json();
       if (result.success && result.orders) {
         userOrders = result.orders;
+        console.log('✅ Buyurtmalar yuklandi:', userOrders.length);
+        
+        // ⭐⭐⭐ STATISTIKANI YANGILASH
+        updateProfileStats();
         renderOrdersList(userOrders);
+      } else {
+        console.log('⚠️ Buyurtmalar topilmadi');
+        userOrders = [];
+        updateProfileStats();
       }
+    } else {
+      console.error('❌ API xatosi:', response.status);
+      userOrders = [];
+      updateProfileStats();
     }
   } catch (error) {
     console.error('Buyurtmalarni yuklash xatosi:', error);
+    userOrders = [];
+    updateProfileStats();
   }
 }
 
@@ -655,7 +648,10 @@ function renderProfile() {
   if (displayName) displayName.textContent = name;
   if (displayPhone) displayPhone.textContent = formatPhone(phone);
 
-  updateProfileStats();
+  // ⭐⭐⭐ STATISTIKANI YANGILASH (userOrders bo'sh bo'lmasa)
+  if (userOrders && userOrders.length > 0) {
+    updateProfileStats();
+  }
   
   const updateBtn = document.getElementById('updatePhoneBtn');
   if (updateBtn) {
@@ -664,20 +660,32 @@ function renderProfile() {
   }
 }
 
+// ⭐⭐⭐ STATISTIKANI HISOBLASH VA KO'RSATISH
 function updateProfileStats() {
-  if (!userOrders) return;
-
-  const totalOrders = userOrders.length;
-  const totalSpent = userOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  console.log('📊 Statistika yangilanmoqda...', userOrders);
+  
+  // userOrders bo'sh bo'lsa, 0 ko'rsatish
+  const totalOrders = userOrders ? userOrders.length : 0;
+  const totalSpent = userOrders ? userOrders.reduce((sum, o) => sum + (o.total || 0), 0) : 0;
 
   const totalOrdersEl = document.getElementById('totalOrders');
   const totalSpentEl = document.getElementById('totalSpent');
   const ordersCountBadgeEl = document.getElementById('ordersCountBadge');
   const vipStatusEl = document.getElementById('vipStatus');
 
-  if (totalOrdersEl) totalOrdersEl.textContent = totalOrders;
-  if (totalSpentEl) totalSpentEl.textContent = (totalSpent / 1000).toFixed(0) + 'k';
-  if (ordersCountBadgeEl) ordersCountBadgeEl.textContent = totalOrders;
+  if (totalOrdersEl) {
+    totalOrdersEl.textContent = totalOrders;
+    console.log('✅ totalOrders:', totalOrders);
+  }
+  
+  if (totalSpentEl) {
+    totalSpentEl.textContent = (totalSpent / 1000).toFixed(0) + 'k';
+    console.log('✅ totalSpent:', totalSpent);
+  }
+  
+  if (ordersCountBadgeEl) {
+    ordersCountBadgeEl.textContent = totalOrders;
+  }
 
   if (vipStatusEl) {
     if (totalOrders >= 20) vipStatusEl.textContent = '💎';
@@ -694,6 +702,10 @@ function showProfileNotFound() {
   if (profileSource) profileSource.textContent = '🤖 Telegram';
   if (displayName) displayName.textContent = '---';
   if (displayPhone) displayPhone.textContent = '---';
+
+  // ⭐⭐⭐ STATISTIKANI 0 QILISH
+  userOrders = [];
+  updateProfileStats();
 
   const updateBtn = document.getElementById('updatePhoneBtn');
   if (updateBtn) {
@@ -739,7 +751,7 @@ window.requestContactFromModal = function() {
       const contact = tg.initDataUnsafe?.contact;
       if (contact) {
         let phone = contact.phone_number || '';
-        phone = phone.replace(/\D/g, '');
+        phone = phone.replace(/\\D/g, '');
         if (phone.startsWith('998')) phone = phone.substring(3);
         phone = phone.slice(-9);
         
@@ -748,7 +760,8 @@ window.requestContactFromModal = function() {
         closeContactRequestModal();
         showNotification('✅ Ma\'lumotlar saqlandi!', 'success');
         
-        setTimeout(() => startPaymentProcess(), 500);
+        // ⭐⭐⭐ BUYURTMALARNI QAYTA YUKLASH
+        setTimeout(() => loadUserOrders(), 500);
       }
     } else {
       showProfileInputModal();
@@ -795,7 +808,7 @@ window.saveProfileAndContinue = function() {
     return;
   }
   
-  phone = phone.replace(/\D/g, '');
+  phone = phone.replace(/\\D/g, '');
   if (phone.startsWith('998')) phone = phone.substring(3);
   if (phone.startsWith('+998')) phone = phone.substring(4);
   phone = phone.slice(-9);
@@ -810,7 +823,8 @@ window.saveProfileAndContinue = function() {
   closeContactRequestModal();
   showNotification('✅ Ma\'lumotlar saqlandi!', 'success');
   
-  setTimeout(() => startPaymentProcess(), 500);
+  // ⭐⭐⭐ BUYURTMALARNI YUKLASH
+  setTimeout(() => loadUserOrders(), 500);
 };
 
 window.closeProfileInputModal = function() {
@@ -830,13 +844,16 @@ window.requestContact = function() {
         const contact = tg.initDataUnsafe?.contact;
         if (contact) {
           let phone = contact.phone_number || '';
-          phone = phone.replace(/\D/g, '');
+          phone = phone.replace(/\\D/g, '');
           if (phone.startsWith('998')) phone = phone.substring(3);
           phone = phone.slice(-9);
           
           const name = contact.first_name || contact.name || 'Foydalanuvchi';
           saveUserProfile(name, phone);
           showNotification('✅ Ma\'lumotlar yangilandi!', 'success');
+          
+          // ⭐⭐⭐ BUYURTMALARNI QAYTA YUKLASH
+          setTimeout(() => loadUserOrders(), 500);
         }
       } else {
         showProfileInputModal();
@@ -1158,7 +1175,6 @@ window.switchTab = function(tabName) {
   }
 };
 
-// Order button
 document.getElementById('orderBtn').addEventListener('click', () => {
   if (!isTelegramWebApp) {
     showNotification('Faqat Telegram orqali!', 'error');
@@ -1184,9 +1200,10 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCategories();
     renderMenu();
     renderCart();
+    
+    // ⭐⭐⭐ PROFILNI DARHOL YUKLASH
     loadUserProfile();
     
-    // Main button ni sozlash
     tg.MainButton.setText('🛒 Buyurtma berish');
     tg.MainButton.onClick(() => {
       startPaymentProcess();
