@@ -2,7 +2,7 @@ export const menuData = [
 {
 id: 1,
 name: "Bodrum Salatası",
-price: 1000,
+price: 67000,
 category: "salad",
 image: "https://i.ibb.co/vvKZwcYP/160.png",
 description: "Свежие помидоры, свежие огурцы, морковь, красная капуста, айсберг, орехи, брынза, оливки, лимонный соус, гранатовый соус",
