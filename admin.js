@@ -341,70 +341,25 @@ function renderOrders() {
   const container = document.getElementById('ordersListContainer');
   if (!container) return;
   
-  // Barcha buyurtmalarni status bo'yicha guruhlash
-  const pendingOrders = orders.filter(o => {
-    const status = o.status || o.payment_status;
-    return status === 'pending' || status === 'pending_payment';
-  });
-  
+  // FAQAT QABUL QILINGAN BUYURTMALARNI FILTRLASH
   const acceptedOrders = orders.filter(o => {
     const status = o.status || o.payment_status;
     return status === 'accepted' || status === 'confirmed' || status === 'paid';
   });
   
-  const rejectedOrders = orders.filter(o => {
-    const status = o.status || o.payment_status;
-    return status === 'rejected';
-  });
-  
-  // HTML yaratish
+  // HTML yaratish - faqat qabul qilinganlar uchun
   let html = '';
   
-  // 1. Kutilayotgan buyurtmalar (agar bo'lsa)
-  if (pendingOrders.length > 0) {
-    html += `
-      <div class="orders-section">
-        <h3 style="color: #FFA502; font-size: 16px; margin: 20px 0 12px; font-weight: 600;">
-          ⏳ Kutilayotgan buyurtmalar (${pendingOrders.length})
-        </h3>
-        ${pendingOrders.map((order, index) => createOrderCard(order, index, 'pending')).join('')}
-      </div>
-    `;
-  }
-  
-  // 2. Qabul qilingan buyurtmalar
   if (acceptedOrders.length > 0) {
-    html += `
-      <div class="orders-section">
-        <h3 style="color: #00D084; font-size: 16px; margin: 20px 0 12px; font-weight: 600;">
-          ✅ Qabul qilingan buyurtmalar (${acceptedOrders.length})
-        </h3>
-        ${acceptedOrders.map((order, index) => createOrderCard(order, index, 'accepted')).join('')}
-      </div>
-    `;
-  }
-  
-  // 3. Bekor qilingan buyurtmalar (agar bo'lsa)
-  if (rejectedOrders.length > 0) {
-    html += `
-      <div class="orders-section">
-        <h3 style="color: #FF4757; font-size: 16px; margin: 20px 0 12px; font-weight: 600;">
-          ❌ Bekor qilingan buyurtmalar (${rejectedOrders.length})
-        </h3>
-        ${rejectedOrders.map((order, index) => createOrderCard(order, index, 'rejected')).join('')}
-      </div>
-    `;
-  }
-  
-  // Agar umuman buyurtma bo'lmasa
-  if (orders.length === 0) {
+    html = acceptedOrders.map((order, index) => createOrderCard(order, index, 'accepted')).join('');
+  } else {
     html = `
       <div class="empty-state">
         <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
           <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
           <polyline points="14 2 14 8 20 8"/>
         </svg>
-        <p>Hali buyurtmalar yo'q</p>
+        <p>Qabul qilingan buyurtmalar yo'q</p>
       </div>
     `;
   }
