@@ -1,4 +1,3 @@
-
 // ==========================================
 // BODRUM - SAYT VA TELEGRAM WEBAPP UCHUN UMUMIY
 // ==========================================
@@ -358,7 +357,7 @@ window.showContactRequestModal = function() {
         const contact = tg.initDataUnsafe?.contact;
         if (contact) {
           let phone = contact.phone_number || '';
-          phone = phone.replace(/\\D/g, '');
+          phone = phone.replace(/\D/g, '');
           if (phone.startsWith('998')) phone = phone.substring(3);
           phone = phone.slice(-9);
 
@@ -399,7 +398,7 @@ window.showProfileInputModal = function() {
   modal.innerHTML = `
     <div class="modal-box" style="max-width: 400px; text-align: center;">
       <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #FFD700, #D4AF37); display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 20px;">👤</div>
-      <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #fff;">Ma\\'lumotlaringiz</h2>
+      <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #fff;">Ma\'lumotlaringiz</h2>
       <p style="color: #888; margin-bottom: 24px; font-size: 14px;">Buyurtma berish uchun ismingiz va telefon raqamingiz kerak</p>
 
       <div style="margin-bottom: 16px;">
@@ -427,7 +426,7 @@ window.saveProfileAndContinue = function() {
     return;
   }
 
-  phone = phone.replace(/\\D/g, '');
+  phone = phone.replace(/\D/g, '');
   if (phone.startsWith('998')) phone = phone.substring(3);
   if (phone.startsWith('+998')) phone = phone.substring(4);
   phone = phone.slice(-9);
@@ -455,7 +454,7 @@ window.requestContact = function() {
 };
 
 // ==========================================
-// PROFILE FUNCTIONS
+// PROFILE FUNCTIONS - TO'G'RILANGAN
 // ==========================================
 
 async function loadUserProfile() {
@@ -464,6 +463,7 @@ async function loadUserProfile() {
   const savedName = getUserName();
   const savedPhone = getUserPhone();
 
+  // Agar localStorage da ma'lumot bo'lsa
   if (savedName && savedPhone) {
     userProfile = {
       name: savedName,
@@ -472,7 +472,11 @@ async function loadUserProfile() {
     };
 
     renderProfile();
-    await loadUserOrdersFromServer();
+
+    // Serverdan buyurtmalarni yuklash (faqat phone bo'lsa)
+    if (savedPhone && savedPhone.length === 9) {
+      await loadUserOrdersFromServer();
+    }
     return;
   }
 
@@ -519,34 +523,45 @@ async function loadUserProfile() {
   }
 }
 
+// ⭐⭐⭐ TO'G'RILANGAN loadUserOrdersFromServer
 async function loadUserOrdersFromServer() {
   try {
-    const userId = getUserId();
-    let tgId = userId;
-    if (tgId.startsWith('tg_')) {
-      tgId = tgId.replace('tg_', '');
+    const phone = getUserPhone();
+
+    // Agar telefon raqam bo'lmasa, serverga so'rov yubormaymiz
+    if (!phone || phone.length !== 9) {
+      console.log('⚠️ Telefon raqam yo\'q, serverdan buyurtmalarni yuklamaymiz');
+      userOrders = [];
+      updateProfileStats();
+      return;
     }
 
-    console.log('🔍 Buyurtmalarni yuklash: tgId =', tgId);
+    console.log('🔍 Buyurtmalarni yuklash: phone =', phone);
 
-    const response = await fetch(`${SERVER_URL}/api/user/profile`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tgId: tgId })
+    // Phone orqali buyurtmalarni olish
+    const response = await fetch(`${SERVER_URL}/api/orders?phone=${encodeURIComponent(phone)}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
     });
 
     if (response.ok) {
       const result = await response.json();
-      if (result.success && result.orders) {
-        userOrders = result.orders;
+      if (result && Array.isArray(result)) {
+        userOrders = result;
         console.log('✅ Buyurtmalar yuklandi:', userOrders.length);
         updateProfileStats();
         renderOrdersList(userOrders);
       } else {
+        console.log('⚠️ Buyurtmalar topilmadi yoki noto\'g\'ri format');
         userOrders = [];
         updateProfileStats();
       }
+    } else if (response.status === 404) {
+      console.log('⚠️ Buyurtmalar topilmadi (404)');
+      userOrders = [];
+      updateProfileStats();
     } else {
+      console.error('❌ API xatosi:', response.status);
       userOrders = [];
       updateProfileStats();
     }
@@ -569,6 +584,12 @@ function renderProfile() {
   if (profileSource) profileSource.textContent = isTelegramWebApp ? '🤖 Telegram' : '🌐 Sayt';
   if (displayName) displayName.textContent = name;
   if (displayPhone) displayPhone.textContent = formatPhone(phone);
+
+  // Profil subtitle yangilash
+  const profileSubtitle = document.getElementById('profileSubtitle');
+  if (profileSubtitle) {
+    profileSubtitle.textContent = isTelegramWebApp ? 'Telegram orqali avtomatik olingan' : 'Sayt orqali kiritilgan';
+  }
 
   updateProfileStats();
 
@@ -612,6 +633,11 @@ function showProfileNotFound() {
   if (displayName) displayName.textContent = '---';
   if (displayPhone) displayPhone.textContent = '---';
 
+  const profileSubtitle = document.getElementById('profileSubtitle');
+  if (profileSubtitle) {
+    profileSubtitle.textContent = 'Ma\'lumot kiritilmagan';
+  }
+
   userOrders = [];
   updateProfileStats();
 
@@ -630,8 +656,8 @@ function renderOrdersList(orders) {
     container.innerHTML = `
       <div class="empty-orders">
         <div class="empty-orders-icon">📭</div>
-        <div class="empty-orders-text">Hali buyurtmalar yo\\'q</div>
-        <button class="browse-menu-btn" onclick="switchTab('menu')">Menyuni ko\\'rish</button>
+        <div class="empty-orders-text">Hali buyurtmalar yo\'q</div>
+        <button class="browse-menu-btn" onclick="switchTab('menu')">Menyuni ko\'rish</button>
       </div>
     `;
     return;
@@ -681,7 +707,7 @@ function renderOrdersList(orders) {
         </div>
         <div class="order-history-items">${itemsText}</div>
         <div class="order-history-footer">
-          <span class="order-history-total">${(order.total || 0).toLocaleString()} so\\'m</span>
+          <span class="order-history-total">${(order.total || 0).toLocaleString()} so\'m</span>
           <span class="order-history-status ${statusClass}">${statusText}</span>
         </div>
       </div>
@@ -770,7 +796,7 @@ function createCard(item) {
         <img src="${item.image}" alt="${item.name}" loading="lazy" onerror="this.style.display='none'">
       </div>
       <h3>${item.name}</h3>
-      <div class="price">${item.price.toLocaleString()} so\\'m</div>
+      <div class="price">${item.price.toLocaleString()} so\'m</div>
       <button class="add-btn-only" onclick="event.stopPropagation(); addToCart(${item.id})">Savatchaga</button>
     </div>
   `;
@@ -874,7 +900,7 @@ function renderCart() {
         </div>
         <div class="cart-item-info">
           <div class="cart-item-name">${item.name}</div>
-          <div class="cart-item-price">${(item.price * item.qty).toLocaleString()} so\\'m</div>
+          <div class="cart-item-price">${(item.price * item.qty).toLocaleString()} so\'m</div>
         </div>
         <div class="cart-item-controls">
           <div class="cart-item-qty">
@@ -889,7 +915,7 @@ function renderCart() {
   });
 
   cartBadge.textContent = cart.reduce((s, i) => s + i.qty, 0);
-  cartTotal.textContent = `Umumiy: ${total.toLocaleString()} so\\'m`;
+  cartTotal.textContent = `Umumiy: ${total.toLocaleString()} so\'m`;
 }
 
 window.updateQty = function(idx, delta) {
