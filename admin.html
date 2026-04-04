@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0f0f0f"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <title>BODRUM - Admin</title>
+  <link rel="stylesheet" href="admin.css"/>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<base target="_blank">
+</head>
+<body>
+  <div id="splashScreen" class="splash-screen">
+    <div class="splash-logo-container">
+      <div class="splash-ring-outer"></div>
+      <div class="splash-ring-inner"></div>
+      <div class="splash-icon">🍽️</div>
+      <div>
+        <div class="splash-logo-text">BODRUM</div>
+        <div class="splash-subtitle">RESTAURANT</div>
+        <div class="splash-year">EST. 2008</div>
+      </div>
+    </div>
+    <div class="splash-loader">
+      <div class="splash-dot"></div>
+      <div class="splash-dot"></div>
+      <div class="splash-dot"></div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="mobile-content">
+    
+    <!-- 1. BUYURTMALAR -->
+    <section id="ordersSection" class="tab-panel active">
+      <div class="section-header">
+        <h2>📦 Buyurtmalar</h2>
+      </div>
+
+      <div class="orders-header-simple" style="margin: 20px 0;">
+        <h3 style="color: var(--gold-primary); font-size: 18px; font-weight: 600;">✅ Qabul qilingan buyurtmalar</h3>
+      </div>
+
+      <div class="orders-list-container" id="ordersListContainer">
+        <div class="empty-state">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+          <p>Qabul qilingan buyurtmalar yo'q</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. MIJOZLAR -->
+    <section id="customersSection" class="tab-panel">
+      <div class="section-header">
+        <h2>👥 Mijozlar</h2>
+        <div class="search-container">
+          <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" class="search-input" placeholder="Ism yoki telefon..." id="customerSearch" oninput="searchCustomers()">
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card-small">
+          <span class="sc-number" id="totalCustomers">0</span>
+          <span class="sc-label">Jami</span>
+        </div>
+        <div class="stat-card-small vip">
+          <span class="sc-number" id="vipCustomers">0</span>
+          <span class="sc-label">VIP</span>
+        </div>
+        <div class="stat-card-small active">
+          <span class="sc-number" id="activeToday">0</span>
+          <span class="sc-label">Bugun</span>
+        </div>
+      </div>
+
+      <div class="customers-list" id="customersList"></div>
+    </section>
+
+    <!-- 3. STATISTIKA -->
+    <section id="statsSection" class="tab-panel">
+      <div class="section-header">
+        <h2>📊 Statistika</h2>
+        <div class="period-selector">
+          <button class="period-btn active" onclick="setPeriod('day')">Kun</button>
+          <button class="period-btn" onclick="setPeriod('week')">Hafta</button>
+          <button class="period-btn" onclick="setPeriod('month')">Oy</button>
+        </div>
+      </div>
+
+      <div class="big-stats">
+        <div class="big-stat">
+          <div class="bs-icon">💰</div>
+          <div class="bs-info">
+            <span class="bs-value" id="statRevenue">0</span>
+            <span class="bs-label">Daromad</span>
+          </div>
+        </div>
+        <div class="big-stat">
+          <div class="bs-icon">📦</div>
+          <div class="bs-info">
+            <span class="bs-value" id="statOrders">0</span>
+            <span class="bs-label">Buyurtma</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <canvas id="mainChart"></canvas>
+      </div>
+
+      <div class="top-section">
+        <h3>🏆 Top mahsulotlar</h3>
+        <div class="top-list" id="topProductsList"></div>
+      </div>
+    </section>
+
+    <!-- 4. MENU BOSHQARUVI -->
+    <section id="menuSection" class="tab-panel">
+      <div class="section-header compact">
+        <h2>🍽️ Menyu boshqaruvi</h2>
+        <div style="display: flex; gap: 8px;">
+          <button class="fab-btn" onclick="openAddCategoryModal()" title="Yangi kategoriya">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+          <button class="fab-btn" onclick="openAddFoodModal()" title="Yangi mahsulot">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Search -->
+      <div class="search-container" style="margin-top: 0; margin-bottom: 16px;">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" class="search-input" id="menuSearchInput" placeholder="Mahsulot qidirish..." oninput="searchMenu()">
+      </div>
+
+      <!-- Category Pills -->
+      <div class="category-pills" id="menuCategoryPills">
+        <!-- Dynamic categories loaded by JS -->
+      </div>
+
+      <!-- Menu Grid -->
+      <div class="food-grid" id="menuGrid">
+        <div class="empty-state" style="grid-column: 1/-1;">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
+          <p>Mahsulotlar yuklanmoqda...</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="switchTab('orders')" data-tab="orders">
+      <div class="nav-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+      </div>
+      <span class="nav-label">Buyurtmalar</span>
+    </button>
+
+    <button class="nav-item" onclick="switchTab('customers')" data-tab="customers">
+      <div class="nav-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+      </div>
+      <span class="nav-label">Mijozlar</span>
+    </button>
+
+    <button class="nav-item" onclick="switchTab('menu')" data-tab="menu">
+      <div class="nav-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3h18v2H3V3zm0 4h18v2H3V7zm0 4h18v2H3v-2z"/>
+        </svg>
+      </div>
+      <span class="nav-label">Menyu</span>
+    </button>
+
+    <button class="nav-item" onclick="switchTab('stats')" data-tab="stats">
+      <div class="nav-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10"></line>
+          <line x1="12" y1="20" x2="12" y2="4"></line>
+          <line x1="6" y1="20" x2="6" y2="14"></line>
+          <path d="M3 20h18"/>
+        </svg>
+      </div>
+      <span class="nav-label">Statistika</span>
+    </button>
+  </nav>
+
+  <!-- Order Detail Modal -->
+  <div id="orderModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>Buyurtma #</span>
+          <span id="modalOrderId"></span>
+        </div>
+        <button class="close-btn" onclick="closeModal()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="customer-info-card">
+          <div class="info-row">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6600" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <div class="info-content">
+              <span class="info-label">Mijoz</span>
+              <span class="info-value" id="modalCustomer"></span>
+            </div>
+          </div>
+          
+          <div class="info-row">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6600" stroke-width="2">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+            </svg>
+            <div class="info-content">
+              <span class="info-label">Telefon</span>
+              <span class="info-value" id="modalPhone"></span>
+            </div>
+          </div>
+
+          <div class="info-row" id="locationRow">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6600" stroke-width="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            <div class="info-content">
+              <span class="info-label">Manzil</span>
+              <a id="modalLocation" class="location-link" target="_blank">Xaritada ko'rish →</a>
+            </div>
+          </div>
+
+          <div class="info-row">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2">
+              <line x1="12" y1="1" x2="12" y2="23"></line>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+            <div class="info-content">
+              <span class="info-label">Summa</span>
+              <span class="info-value price" id="modalTotal"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="items-section">
+          <h4>🍽 Mahsulotlar</h4>
+          <div class="items-list" id="modalItems"></div>
+        </div>
+
+        <div class="payment-info">
+          <span class="payment-label">To'lov usuli:</span>
+          <span class="payment-method" id="modalPayment"></span>
+        </div>
+      </div>
+
+      <div class="modal-footer" id="modalActions" style="display: none;"></div>
+    </div>
+  </div>
+
+  <!-- Customer Detail Modal -->
+  <div id="customerModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">👤 Mijoz ma'lumotlari</div>
+        <button class="close-btn" onclick="closeCustomerModal()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="customerDetailContent"></div>
+    </div>
+  </div>
+
+  <!-- Food Add/Edit Modal - FAQAT URL -->
+  <div id="foodModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="foodModalTitle">🆕 Yangi mahsulot</div>
+        <button class="close-btn" onclick="closeFoodModal()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <form id="foodForm">
+          <!-- Image URL Input - FAQAT URL -->
+          <div class="form-group">
+            <label>Rasm URL</label>
+            
+            <input type="url" class="form-input" id="foodImageUrl" placeholder="https://i.ibb.co/..." oninput="previewImageUrl(this.value)">
+            <small style="color: #888; display: block; margin-top: 6px; font-size: 12px;">Masalan: https://i.ibb.co/abc123/image.png</small>
+            
+            <!-- Preview -->
+            <div id="imagePreviewContainer" style="margin-top: 12px; display: none;">
+              <img id="imagePreview" src="" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid rgba(212,175,55,0.3);">
+            </div>
+          </div>
+
+          <!-- Name -->
+          <div class="form-group">
+            <label>Nomi</label>
+            <input type="text" class="form-input" id="foodName" placeholder="Mahsulot nomi" required>
+          </div>
+
+          <!-- Price -->
+          <div class="form-group">
+            <label>Narxi (so'm)</label>
+            <input type="number" class="form-input" id="foodPrice" placeholder="67000" required>
+          </div>
+
+          <!-- Category -->
+          <div class="form-group">
+            <label>Kategoriya</label>
+            <select class="form-input" id="foodCategory" required>
+              <option value="">Kategoriya tanlang</option>
+            </select>
+          </div>
+
+          <!-- Description -->
+          <div class="form-group">
+            <label>Tavsif</label>
+            <textarea class="form-input" id="foodDescription" rows="3" placeholder="Mahsulot tavsifi..."></textarea>
+          </div>
+
+          <!-- Available Toggle -->
+          <div class="checkbox">
+            <label class="switch-label">
+              <input type="checkbox" id="foodAvailable" checked>
+              <span class="switch-slider"></span>
+              <span class="switch-text">Mavjud</span>
+            </label>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button class="submit-btn" onclick="saveFood()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          Saqlash
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KATEGORIYA MODAL -->
+  <div id="categoryModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="categoryModalTitle">📁 Yangi kategoriya</div>
+        <button class="close-btn" onclick="closeCategoryModal()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <form id="categoryForm">
+          <!-- Ikonka -->
+          <div class="form-group">
+            <label>Ikonka (Emoji)</label>
+            <div class="emoji-picker-wrapper">
+              <div class="emoji-display" id="emojiDisplay" onclick="toggleEmojiPicker()">
+                <span id="selectedEmoji" class="selected-emoji">🍽️</span>
+                <span class="emoji-hint">Bosib emoji tanlang</span>
+              </div>
+              
+              <input type="text" 
+                     id="emojiInput" 
+                     class="emoji-native-input" 
+                     placeholder="Emoji kiriting yoki quyidagilardan tanlang..."
+                     oninput="updateEmojiFromInput(this.value)">
+              
+              <div class="quick-emoji-grid" id="quickEmojiGrid">
+                <button type="button" onclick="selectEmoji('🥗')">🥗</button>
+                <button type="button" onclick="selectEmoji('🍜')">🍜</button>
+                <button type="button" onclick="selectEmoji('🍞')">🍞</button>
+                <button type="button" onclick="selectEmoji('🫓')">🫓</button>
+                <button type="button" onclick="selectEmoji('🍕')">🍕</button>
+                <button type="button" onclick="selectEmoji('🍔')">🍔</button>
+                <button type="button" onclick="selectEmoji('🐟')">🐟</button>
+                <button type="button" onclick="selectEmoji('🍖')">🍖</button>
+                <button type="button" onclick="selectEmoji('🍟')">🍟</button>
+                <button type="button" onclick="selectEmoji('🍰')">🍰</button>
+                <button type="button" onclick="selectEmoji('🍇')">🍇</button>
+                <button type="button" onclick="selectEmoji('🥤')">🥤</button>
+                <button type="button" onclick="selectEmoji('🥩')">🥩</button>
+                <button type="button" onclick="selectEmoji('🍗')">🍗</button>
+                <button type="button" onclick="selectEmoji('🥘')">🥘</button>
+                <button type="button" onclick="selectEmoji('🍲')">🍲</button>
+                <button type="button" onclick="selectEmoji('🥪')">🥪</button>
+                <button type="button" onclick="selectEmoji('🌮')">🌮</button>
+                <button type="button" onclick="selectEmoji('🍱')">🍱</button>
+                <button type="button" onclick="selectEmoji('🍛')">🍛</button>
+                <button type="button" onclick="selectEmoji('🥟')">🥟</button>
+                <button type="button" onclick="selectEmoji('🍤')">🍤</button>
+                <button type="button" onclick="selectEmoji('🥙')">🥙</button>
+                <button type="button" onclick="selectEmoji('🧆')">🧆</button>
+                <button type="button" onclick="selectEmoji('🍳')">🍳</button>
+                <button type="button" onclick="selectEmoji('🥓')">🥓</button>
+                <button type="button" onclick="selectEmoji('🍕')">🍕</button>
+                <button type="button" onclick="selectEmoji('🌭')">🌭</button>
+              </div>
+              
+              <input type="hidden" id="categoryIconInput" value="🍽️">
+            </div>
+          </div>
+
+          <!-- Nomi -->
+          <div class="form-group">
+            <label>Kategoriya nomi *</label>
+            <input type="text" class="form-input" id="categoryName" placeholder="Masalan: Ichimliklar" required>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button class="submit-btn" onclick="saveCategory()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          Saqlash
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin script -->
+  <script type="module" src="./admin.js"></script>
+</body>
+</html>
